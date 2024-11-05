@@ -1,6 +1,6 @@
 import pandas as pd
 
-from organizations.worksite_data_enums import WorksiteDataColumns
+from worksite_data.worksite_data_enums import WorksiteDataColumns
 from entities.objects.worksite import Worksite
 
 

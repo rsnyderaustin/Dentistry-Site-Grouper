@@ -1,7 +1,8 @@
 from entities import RequiredEntitiesColumns
 import pandas as pd
 
-from organizations import OrganizationsManager
+from environment import EnvironmentManager
+from worksite_data import WorksiteParentRelations
 
 
 class ProgramManager:
@@ -11,18 +12,12 @@ class ProgramManager:
                  yearend_df: pd.DataFrame,
                  required_entities_cols: RequiredEntitiesColumns
                  ):
-        self.worksites_df = worksites_df
-        self.yearend_df = yearend_df
         self.required_entities_cols = required_entities_cols
 
-        self.organizations_manager = OrganizationsManager()
+        self.environment_manager = EnvironmentManager(yearend_df=yearend_df,
+                                                      site_relations=WorksiteParentRelations(worksites_df))
 
     def create_organizations(self):
-        worksites = create_worksites(self.worksites_df)
-        parent_ids = set(ws.parent_id for ws in worksites)
-
-        non_worksite_parents = set()
-        for parent_id in parent_ids:
-            if parent_id not in worksites.keys():
-                non_worksite_parents.add(parent_id)
+        self.environment_manager.create_environment()
+        x=0
 

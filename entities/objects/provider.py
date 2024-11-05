@@ -1,6 +1,6 @@
 
 
-class Hcp:
+class Provider:
 
     def __init__(self, hcp_id: int, **params):
         self.hcp_id = hcp_id

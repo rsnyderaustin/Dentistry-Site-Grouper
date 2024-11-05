@@ -9,4 +9,5 @@ class Worksite:
         for k, v in params.items():
             setattr(self, k, v)
 
+        self.child_worksites = set()
         self.hcps = set()
