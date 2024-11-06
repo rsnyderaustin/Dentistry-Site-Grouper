@@ -19,8 +19,15 @@ class Worksite:
 
             self._child_worksites.add(worksite)
 
-    def has_worksite(self, worksite_id):
-        return worksite_id == self.worksite_id or worksite_id in self._child_worksites
+    def has_child(self, worksite_id):
+        if self.worksite_id == worksite_id:
+            return True
+
+        for worksite in self._child_worksites:
+            if worksite.has_child(worksite_id):
+                return True
+
+        return False
 
     @property
     def is_ultimate_parent(self):

@@ -3,7 +3,7 @@ import pandas as pd
 from .organization_creator import OrganizationCreator
 from .worksite_parent_relations import WorksiteParentRelations
 from algo import HierarchyAlgo, WorksiteNode
-from entities import RequiredEntitiesColumns, Worksite, WorksiteFactory
+from entities import Organization, RequiredEntitiesColumns, Worksite, WorksiteFactory
 from worksite_data.worksite_data_enums import WorksiteDataColumns
 
 
@@ -62,7 +62,7 @@ class EnvironmentManager:
         uncreated_ids = set(parent_id for parent_id in parent_ids if parent_id not in self.worksites.keys())
         self._recursive_create_uncreated_parents(uncreated_ids)
 
-    def _create_organizations_from_nodes(self, nodes: set[WorksiteNode]):
+    def _create_organizations_from_nodes(self, nodes: set[WorksiteNode]) -> set[Organization]:
         organizations = set()
         for node in nodes:
             if node.is_ultimate_parent:
@@ -71,6 +71,7 @@ class EnvironmentManager:
             worksite = self.worksites[node.worksite_id]
             child_worksites = set(self.worksites[child_node.worksite_id] for child_node in node.child_nodes)
             worksite.add_child_worksites(child_worksites)
+        return organizations
 
     def create_environment(self):
         child_parent_tuples = zip(
@@ -87,9 +88,8 @@ class EnvironmentManager:
                               axis=1)
         self._create_uncreated_parents()
 
-        self._create_organizations_from_nodes(nodes=algo_nodes)
+        organizations = self._create_organizations_from_nodes(nodes=algo_nodes)
 
         relevant_site_ids = self.yearend_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
-        org_creator = OrganizationCreator(worksites=self.worksites)
-        self.organizations = org_creator.create_organizations(relevant_site_ids=relevant_site_ids)
-
+        self.organizations = set(org for org in organizations
+                                 if any(set(org.has_worksite(worksite_id) for worksite_id in relevant_site_ids)))

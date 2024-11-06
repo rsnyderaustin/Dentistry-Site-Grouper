@@ -10,3 +10,10 @@ class Organization:
             setattr(self, k, v)
 
         self.worksites = []
+
+    @property
+    def number_of_child_worksites(self):
+        return self.ult_parent_worksite.number_of_child_worksites
+
+    def has_worksite(self, worksite_id):
+        return self.ult_parent_worksite.has_child(worksite_id)
