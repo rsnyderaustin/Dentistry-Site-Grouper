@@ -1,6 +1,7 @@
 import pandas as pd
 
-from entities import Organization, RequiredEntitiesColumns, Worksite, WorksiteFactory
+from .organization_creator import OrganizationCreator
+from entities import RequiredEntitiesColumns, Worksite, WorksiteFactory
 from worksite_data import worksite_parent_relations
 from worksite_data.worksite_data_enums import WorksiteDataColumns
 
@@ -60,25 +61,15 @@ class EnvironmentManager:
         uncreated_ids = set(parent_id for parent_id in parent_ids if parent_id not in self.worksites.keys())
         self._recursive_create_uncreated_parents(uncreated_ids)
 
-    def _create_organizations(self):
-        for parent_ws_id, children_ws_ids in self.site_relations.parent_to_children.items():
-            parent_ws = self.worksites[parent_ws_id]
-            children_worksites = set(self.worksites[child_ws_id] for child_ws_id in children_ws_ids)
-            parent_ws.child_worksites = children_worksites
-
-        ult_parent_worksites = {worksite_id: worksite for worksite_id, worksite in self.worksites.items()
-                                if worksite_id in self.ultimate_parent_ids}
-        self.organizations = {Organization(ult_parent_worksite=ult_parent_worksite)
-                              for ult_parent_worksite in ult_parent_worksites.values()}
-
     def create_environment(self):
-        worksite_ids = self.yearend_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
-
-
         self.yearend_df.apply(_apply_create_worksites,
                               yearend_df=self.yearend_df,
                               worksites=self.worksites,
                               extra_params=self.required_entities_cols.worksite_columns,
                               axis=1)
         self._create_uncreated_parents()
-        self._create_organizations()
+
+        relevant_site_ids = self.yearend_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
+        org_creator = OrganizationCreator(worksites=self.worksites)
+        self.organizations = org_creator.create_organizations(relevant_site_ids=relevant_site_ids)
+

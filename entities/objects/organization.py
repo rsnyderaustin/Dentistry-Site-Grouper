@@ -13,4 +13,3 @@ class Organization:
 
     def add_child_worksite(self, worksite):
         self.child_worksites.append(worksite)
-
