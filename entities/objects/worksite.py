@@ -10,4 +10,4 @@ class Worksite:
             setattr(self, k, v)
 
         self.child_worksites = set()
-        self.hcps = set()
+        self.providers = set()

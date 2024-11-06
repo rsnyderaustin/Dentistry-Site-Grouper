@@ -9,8 +9,8 @@ class Organization:
         for k, v in params.items():
             setattr(self, k, v)
 
-        self.worksites = {}
+        self.child_worksites = []
 
-    def add_worksite(self, worksite):
-        self.worksites[worksite.worksite_id] = worksite
+    def add_child_worksite(self, worksite):
+        self.child_worksites.append(worksite)
 

@@ -12,10 +12,13 @@ class ProgramManager:
                  yearend_df: pd.DataFrame,
                  required_entities_cols: RequiredEntitiesColumns
                  ):
-        self.required_entities_cols = required_entities_cols
+        yearend_df.columns = [col.lower().replace(' ', '') for col in yearend_df.columns]
+        worksites_df.columns = [col.lower().replace(' ', '') for col in worksites_df.columns]
 
         self.environment_manager = EnvironmentManager(yearend_df=yearend_df,
-                                                      site_relations=WorksiteParentRelations(worksites_df))
+                                                      worksites_df=worksites_df,
+                                                      site_relations=WorksiteParentRelations(worksites_df),
+                                                      required_entities_cols=required_entities_cols)
 
     def create_organizations(self):
         self.environment_manager.create_environment()
