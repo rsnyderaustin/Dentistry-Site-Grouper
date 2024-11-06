@@ -3,17 +3,18 @@ from entities import Organization, Worksite
 
 class HierarchyAlgo:
 
-    def __init__(self, worksites: dict):
-        self.worksites = worksites
+    def __init__(self, child_parent_tuples: set[tuple]):
+        self.child_parent_tuples = child_parent_tuples
+
         self.worksite_parent_tuples = {(ws.worksite_id, ws.parent_id) for ws in self.worksites.values()}
 
     def _create_hierarchy_recursive(self, parent_worksites: set[Worksite]):
         new_worksites = set()
 
         no_children_found = True
+        non_ult_parent_tuples = {tup for tup in self.worksite_parent_tuples if tup[0] != tup[1]}
         for parent_worksite in parent_worksites:
-            children_ids = {tup[0] for tup in self.worksite_parent_tuples if tup[1] == parent_worksite.worksite_id}
-            children_ids = {c_id for c_id in children_ids if c_id != parent_worksite.worksite_id}
+            children_ids = {tup[0] for tup in non_ult_parent_tuples if tup[1] == parent_worksite.worksite_id}
 
             if len(children_ids) == 0:
                 continue
@@ -29,8 +30,8 @@ class HierarchyAlgo:
         self._create_hierarchy_recursive(parent_worksites=new_worksites)
 
     def create_hierarchy(self):
-        ult_parents = {ws for ws_id, ws in self.worksites.items() if ws.is_ultimate_parent}
-        self._create_hierarchy_recursive(parent_worksites=ult_parents)
+        ult_parent_ids = {tup[0] for tup in self.child_parent_tuples if tup[0] == tup[1]}
+        self._create_hierarchy_recursive(parent_ids=ult_parent_ids)
         return ult_parents
 
 

@@ -25,3 +25,18 @@ class Worksite:
     @property
     def is_ultimate_parent(self):
         return self.worksite_id == self.parent_id
+
+    def get_number_of_child_worksites_recursive(self, num_children):
+        if len(self._child_worksites) == 0:
+            return
+
+        for child_worksite in self._child_worksites:
+            num_children += 1
+            child_worksite.get_number_of_child_worksites_recursive(num_children)
+
+    @property
+    def number_of_child_worksites(self):
+        num_children = 0
+        self.get_number_of_child_worksites_recursive(num_children=num_children)
+        return num_children
+

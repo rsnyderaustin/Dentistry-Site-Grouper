@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .worksite_data_enums import WorksiteDataColumns
+from worksite_data.worksite_data_enums import WorksiteDataColumns
 
 
 def _apply_create_relations(row, child_to_parent: dict, parent_to_children: dict):
