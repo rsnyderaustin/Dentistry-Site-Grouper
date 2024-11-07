@@ -1,22 +1,12 @@
 
-
-class ProviderAssignment:
-
-    def __init__(self, hcp_id, hours_per_week, weeks_per_year, extra_data: dict = None):
-        self.hcp_id = hcp_id
-        self.hours_per_week = hours_per_week
-        self.weeks_per_year = weeks_per_year
-        self.extra_data = extra_data
-
-
 class Worksite:
 
-    def __init__(self, worksite_id: int, parent_id: int, extra_params: dict = None):
+    def __init__(self, worksite_id: int, parent_id: int, worksite_data: dict = None):
         self.worksite_id = worksite_id
         self.parent_id = parent_id
 
-        if extra_params:
-            for k, v in extra_params.items():
+        if worksite_data:
+            for k, v in worksite_data.items():
                 setattr(self, k, v)
 
         self.child_worksites = {}
@@ -66,4 +56,3 @@ class Worksite:
     @property
     def number_of_child_worksites(self):
         return self._get_number_of_child_worksites_recursive()
-
