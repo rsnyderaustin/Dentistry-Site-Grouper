@@ -1,27 +1,14 @@
-import pandas as pd
 
-from worksite_data.worksite_data_enums import WorksiteDataColumns
+from column_enums import WorksiteDataColumns
 from entities.objects.worksite import Worksite
 
 
-class WorksiteFactory:
+def apply_create_worksite(row, worksites, extra_params: list = None):
+    worksite_id = row[WorksiteDataColumns.WORKSITE_ID.value]
+    parent_id = row[WorksiteDataColumns.PARENT_ID.value]
 
-    def __init__(self, worksites_df: pd.DataFrame):
-        self.worksites_df = worksites_df
+    if worksite_id not in worksites:
+        worksites[worksite_id] = Worksite(worksite_id=worksite_id, parent_id=parent_id)
 
-        self.worksites = {}
-        self.worksites_created = False
-
-    def create_worksite(self, worksite_id, parent_id, *extra_params):
-        worksite_rows = self.worksites_df[self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value] == worksite_id]
-        if len(worksite_rows) == 0:
-            raise ValueError(f"Could not find row data for Worksite ID {worksite_id}")
-
-        worksite_row = self.worksites_df.loc[self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value] == worksite_id].iloc[0]
-        extra_data = {param: worksite_row[param.value] for param in extra_params}
-        new_worksite = Worksite(
-            worksite_id=worksite_id,
-            parent_id=parent_id,
-            **extra_data
-        )
-        return new_worksite
+    extra_data = {param: row[param] for param in extra_params} if extra_params else {}
+    worksites[worksite_id].add_data(extra_data)

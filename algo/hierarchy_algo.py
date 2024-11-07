@@ -1,16 +1,4 @@
-
-
-class WorksiteNode:
-
-    def __init__(self, worksite_id: int, parent_id: int):
-        self.worksite_id = worksite_id
-        self.parent_id = parent_id
-
-        self.child_nodes = set()
-
-    @property
-    def is_ultimate_parent(self):
-        return self.worksite_id == self.parent_id
+from .worksite_node import WorksiteNode
 
 
 class HierarchyAlgo:

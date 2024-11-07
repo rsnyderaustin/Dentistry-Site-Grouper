@@ -1,25 +1,9 @@
 import pandas as pd
 
-from .organization_creator import OrganizationCreator
 from .worksite_parent_relations import WorksiteParentRelations
 from algo import HierarchyAlgo, WorksiteNode
-from entities import Organization, RequiredEntitiesColumns, Worksite, WorksiteFactory
-from worksite_data.worksite_data_enums import WorksiteDataColumns
-
-
-def _apply_create_worksites(row, yearend_df, extra_params, worksites):
-    worksite_id = row[WorksiteDataColumns.WORKSITE_ID.value]
-    parent_id = row[WorksiteDataColumns.PARENT_ID.value]
-
-    worksite_row = yearend_df.loc[yearend_df[WorksiteDataColumns.WORKSITE_ID.value] == worksite_id].iloc[0]
-    extra_data = {param: worksite_row[param.value] for param in extra_params}
-
-    new_worksite = Worksite(
-        worksite_id=worksite_id,
-        parent_id=parent_id,
-        **extra_data
-    )
-    worksites[worksite_id] = new_worksite
+from entities import Organization, RequiredEntitiesColumns, Worksite, worksite_factory
+from column_enums import WorksiteDataColumns
 
 
 class EnvironmentManager:
@@ -30,66 +14,50 @@ class EnvironmentManager:
                  required_entities_cols: RequiredEntitiesColumns):
         self.yearend_df = yearend_df
         self.worksites_df = worksites_df
-        self.site_relations = WorksiteParentRelations(worksites_df=worksites_df)
+        child_parent_tuples = set(zip(
+            self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value],
+            self.worksites_df[WorksiteDataColumns.PARENT_ID.value]
+        ))
+        self.site_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
+        self.algo = HierarchyAlgo(child_parent_tuples=child_parent_tuples)
         self.required_entities_cols = required_entities_cols
 
-        self.ultimate_parent_ids = {worksite_id for worksite_id in self.site_relations.worksite_to_parent.keys()
-                                    if self.site_relations.worksite_to_parent[worksite_id] == worksite_id}
-
-        self.worksite_factory = WorksiteFactory(worksites_df=worksites_df)
+        self.ultimate_parent_ids = {worksite_id for worksite_id in self.site_relations.child_to_parent.keys()
+                                    if self.site_relations.child_to_parent[worksite_id] == worksite_id}
 
         self.organizations = set()
         self.worksites = dict()
 
-    def _recursive_create_uncreated_parents(self, uncreated_parents: set):
-        new_parent_ids = set()
-        for worksite_id in uncreated_parents:
-            new_worksite = self.worksite_factory.create_worksite(
-                worksite_id=worksite_id,
-                parent_id=self.site_relations.get_parent_id(worksite_id)
-            )
-            self.worksites[new_worksite.worksite_id] = new_worksite
-            new_parent_ids.add(new_worksite.worksite_id)
+    def _create_providers(self):
 
-        uncreated_ids = {id_ for id_ in new_parent_ids if id_ not in self.worksites}
-        if len(uncreated_ids) == 0:
-            return
 
-        self._recursive_create_uncreated_parents(uncreated_ids)
-
-    def _create_uncreated_parents(self):
-        parent_ids = set(ws.parent_id for ws in self.worksites.values())
-        uncreated_ids = set(parent_id for parent_id in parent_ids if parent_id not in self.worksites.keys())
-        self._recursive_create_uncreated_parents(uncreated_ids)
-
-    def _create_organizations_from_nodes(self, nodes: set[WorksiteNode]) -> set[Organization]:
-        organizations = set()
+    def _create_worksites_from_nodes(self, nodes: set[WorksiteNode]):
         for node in nodes:
-            if node.is_ultimate_parent:
-                organizations.add(self.worksites[node.worksite_id])
+            new_worksite = Worksite(worksite_id=node.worksite_id,
+                                    parent_id=node.parent_id)
+            self.worksites[node.worksite_id] = new_worksite
 
+        for node in nodes:
             worksite = self.worksites[node.worksite_id]
-            child_worksites = set(self.worksites[child_node.worksite_id] for child_node in node.child_nodes)
+            child_worksites = {self.worksites[child_node.worksite_id] for child_node in node.child_nodes}
             worksite.add_child_worksites(child_worksites)
-        return organizations
+
+    def _create_organizations_from_nodes(self, nodes: set[WorksiteNode]):
+        ultimate_parent_nodes = {node for node in nodes if node.is_ultimate_parent}
+        self.organizations = {Organization(self.worksites[node.worksite_id]) for node in ultimate_parent_nodes}
 
     def create_environment(self):
-        child_parent_tuples = zip(
-            self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value],
-            self.worksites_df[WorksiteDataColumns.PARENT_ID.value]
-        )
-        algo = HierarchyAlgo(child_parent_tuples=child_parent_tuples)
-        algo_nodes = algo.create_hierarchy()
+        algo_nodes = self.algo.create_hierarchy()
 
-        self.yearend_df.apply(_apply_create_worksites,
-                              yearend_df=self.yearend_df,
+        self._create_providers()
+        self._create_worksites_from_nodes(nodes=algo_nodes)
+        self.yearend_df.apply(worksite_factory.apply_create_worksite,
                               worksites=self.worksites,
                               extra_params=self.required_entities_cols.worksite_columns,
                               axis=1)
-        self._create_uncreated_parents()
 
-        organizations = self._create_organizations_from_nodes(nodes=algo_nodes)
+        self._create_organizations_from_nodes(nodes=algo_nodes)
 
         relevant_site_ids = self.yearend_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
-        self.organizations = set(org for org in organizations
-                                 if any(set(org.has_worksite(worksite_id) for worksite_id in relevant_site_ids)))
+        self.organizations = set(org for org in self.organizations
+                                 if any({org.has_worksite(worksite_id) for worksite_id in relevant_site_ids}))
