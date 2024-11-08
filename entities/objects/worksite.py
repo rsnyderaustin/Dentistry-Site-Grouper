@@ -1,4 +1,20 @@
 
+
+class ProviderAssignment:
+
+    def __init__(self, provider, assignment_data: dict = None):
+        self.provider = provider
+        self.assignment_data = assignment_data
+
+    def __getattr__(self, k):
+        if hasattr(self.provider, k):
+            return getattr(self.provider, k)
+        elif hasattr(self.assignment_data, k):
+            return getattr(self.assignment_data, k)
+        else:
+            raise AttributeError(f"Could not find attribute {k} in ProviderAssignment.")
+
+
 class Worksite:
 
     def __init__(self, worksite_id: int, parent_id: int, worksite_data: dict = None):
@@ -29,19 +45,9 @@ class Worksite:
 
         return False
 
-    def add_data(self, data: dict):
-        for k, v in data.items():
-            if not hasattr(self, k):
-                setattr(self, k, v)
-            else:
-                current_val = getattr(self, k)
-                if not isinstance(current_val, list):
-                    setattr(self, k, list(current_val))
-                getattr(self, k).append(v)
-
-    @property
-    def is_ultimate_parent(self):
-        return self.worksite_id == self.parent_id
+    def add_provider_assignment(self, provider, assignment_data):
+        self.provider_assignments[provider.hcp_id] = ProviderAssignment(provider,
+                                                                        assignment_data)
 
     def _get_number_of_child_worksites_recursive(self, num_children=0):
         if len(self.child_worksites) == 0:
@@ -56,3 +62,13 @@ class Worksite:
     @property
     def number_of_child_worksites(self):
         return self._get_number_of_child_worksites_recursive()
+
+    def get_all(self, col, data: list):
+        provider_data = [getattr(prov_assign, col) for prov_assign in self.provider_assignments.values()]
+        data.extend(provider_data)
+        for child_worksite in self.child_worksites.values():
+            child_worksite.get_all(col=col,
+                                   data=data)
+
+        return data
+

@@ -15,11 +15,11 @@ def create_organizations(worksite_nodes: set[WorksiteNode], valid_worksite_ids):
     return orgs
 
 
-def apply_create_worksite(row, worksites, worksite_params: list = None):
+def apply_create_worksite(row, worksites, worksite_cols: list = None):
     worksite_id = row[WorksiteDataColumns.WORKSITE_ID.value]
     parent_id = row[WorksiteDataColumns.PARENT_ID.value]
 
-    worksite_data = {param: row[param] for param in worksite_params}
+    worksite_data = {col: row[col] for col in worksite_cols}
 
     if worksite_id not in worksites:
         worksites[worksite_id] = Worksite(worksite_id=worksite_id,
@@ -27,13 +27,10 @@ def apply_create_worksite(row, worksites, worksite_params: list = None):
                                           worksite_data=worksite_data)
 
 
-def apply_create_provider(row, providers, provider_params: list = None):
+def apply_create_provider(row, providers, provider_cols: list = None):
     hcp_id = row[ProviderDataColumns.PROVIDER_ID.value]
-    provider_data = {param.value: row[param.value] for param in provider_params} if provider_params else {}
+    provider_data = {col: row[col] for col in provider_cols} if provider_cols else {}
     if hcp_id not in providers:
-        new_provider = Provider(hcp_id=hcp_id,
-                                provider_data=provider_data)
-        providers[hcp_id] = new_provider
-    else:
-        provider = providers[hcp_id]
-        provider.add_data(provider_data)
+        provider = Provider(hcp_id=hcp_id,
+                            provider_data=provider_data)
+        providers[hcp_id] = provider
