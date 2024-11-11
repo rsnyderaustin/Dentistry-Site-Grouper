@@ -1,4 +1,4 @@
-from .analyzer import Analyzer
+from .analysis_funcs import AnalysisFunctions
 
 
 

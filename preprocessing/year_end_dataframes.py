@@ -15,7 +15,7 @@ def _get_years_from_dataframe(df: pd.DataFrame):
 def _split_by_year(df: pd.DataFrame):
     df_years = _get_years_from_dataframe(df=df)
 
-    dfs = {year: df[df[ProgramDataColumns.YEAR.value]] for year in df_years}
+    dfs = {year: df.query(f"{ProgramDataColumns.YEAR.value} == {year}") for year in df_years}
 
     return dfs
 
