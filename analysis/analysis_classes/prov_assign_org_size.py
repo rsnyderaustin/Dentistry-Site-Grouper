@@ -18,7 +18,7 @@ class Data:
         if org_size not in self._data[year]:
             self._data[year][org_size] = set()
 
-        self._data[org_size].update(provider_assignments)
+        self._data[year][org_size].update(provider_assignments)
 
     def provider_assignments_generator(self):
         for year, org_data in self._data.items():
@@ -52,15 +52,14 @@ class Formatter:
 
 class ProvAssignByOrgSize(AnalysisClass):
 
-    def __init__(self, environments):
+    def __init__(self):
         super().__init__()
-        self.environments = environments
         self.data = Data()
 
-    def process_data(self):
-        for environment in self.environments:
+    def process_data(self, environments):
+        for environment in environments:
             for organization in environment.organizations:
-                org_size = organization.ult_parent_worksite.number_of_child_worksites + 1
+                org_size = len(organization.worksites)
 
                 self.data.add_provider_assignments(
                     year=environment.year,
@@ -76,5 +75,6 @@ class ProvAssignByOrgSize(AnalysisClass):
     @property
     def required_columns(self):
         return RequiredEntitiesColumns(worksite_columns=[],
-                                       provider_columns=['hcpid'],
+                                       provider_columns=[ProviderDataColumns.PROVIDER_ID.value,
+                                                         ProviderDataColumns.PRAC_ARR_NAME.value],
                                        provider_at_worksite_columns=[])

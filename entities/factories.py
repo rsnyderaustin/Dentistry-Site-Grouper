@@ -27,7 +27,7 @@ def apply_create_worksite(row, worksites, worksite_cols: list = None):
                                           worksite_data=worksite_data)
 
 
-def apply_create_provider(row, providers, provider_cols: list = None):
+def apply_create_provider(row, providers, provider_cols: list):
     hcp_id = row[ProviderDataColumns.PROVIDER_ID.value]
     provider_data = {col: row[col] for col in provider_cols} if provider_cols else {}
     if hcp_id not in providers:

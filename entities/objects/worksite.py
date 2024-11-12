@@ -24,25 +24,16 @@ class Worksite:
             for k, v in worksite_data.items():
                 setattr(self, k, v)
 
-        self.child_worksites = {}
-        self.provider_assignments = {}
+        self.child_worksites = dict()
+        self.provider_assignments = set()
 
-    @property
-    def all_provider_assignments(self):
-        provider_assignments = set()
-
-        for worksite in self.child_worksites.values():
-            provider_assignments.add(set(worksite.provider_assignments))
-            provider_assignments.update(worksite.all_providers)
-
-        return provider_assignments
-
-    def add_child_worksites(self, child_worksites):
-        for child_worksite in child_worksites:
-            if child_worksite.worksite_id == self.worksite_id:
-                continue
-
+    def add_child_worksite(self, child_worksite):
+        if child_worksite.parent_id == self.worksite_id:
             self.child_worksites[child_worksite.worksite_id] = child_worksite
+            return
+        else:
+            for worksite in self.child_worksites.values():
+                worksite.add_child_worksite(child_worksite)
 
     def has_child(self, worksite_id):
         if self.worksite_id == worksite_id:
@@ -59,42 +50,16 @@ class Worksite:
             return True
 
         for worksite_id, worksite in self.child_worksites.items():
-            if worksite.has_one_of_child(worksite_ids):
+            if worksite.has_one_of_child([worksite_ids]):
                 return True
 
         return False
 
     def add_provider_assignment(self, provider, assignment_data):
-        provider_id = getattr(provider, ProviderDataColumns.PROVIDER_ID.value)
-        self.provider_assignments[provider_id] = ProviderAssignment(provider,
-                                                                    assignment_data)
-
-    def _get_number_of_child_worksites_recursive(self, num_children=0):
-        if len(self.child_worksites) == 0:
-            return num_children
-
-        for child_worksite_id, child_worksite in self.child_worksites.items():
-            num_children += 1
-            num_children = child_worksite._get_number_of_child_worksites_recursive(num_children)
-
-        return num_children
-
-    @property
-    def number_of_child_worksites(self):
-        return self._get_number_of_child_worksites_recursive()
-
-    @property
-    def all_child_worksites(self):
-        child_worksites = set()
-
-        for worksite in self.child_worksites.values():
-            child_worksites.add(worksite)
-            child_worksites.update(worksite.all_child_worksites)
-
-        return child_worksites
+        self.provider_assignments.add(ProviderAssignment(provider, assignment_data))
 
     def get_all_data(self, col, data: list):
-        provider_data = [getattr(prov_assign, col) for prov_assign in self.provider_assignments.values()]
+        provider_data = [getattr(prov_assign, col) for prov_assign in self.provider_assignments]
         data.extend(provider_data)
         for child_worksite in self.child_worksites.values():
             child_worksite.get_all_data(col=col,

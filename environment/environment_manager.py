@@ -23,7 +23,7 @@ class EnvironmentManager:
         self.worksites_df = worksites_df
         self.year_end_dataframes = preprocessing.YearEndDataFrames(year_end_df=year_end_df)
 
-        self.environments = None
+        self.environments = set()
 
         child_parent_tuples = set(zip(
             worksites_df[WorksiteDataColumns.WORKSITE_ID.value],
@@ -40,12 +40,11 @@ class EnvironmentManager:
         env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
                                        year_end_df=self.year_end_df,
                                        algo_nodes=self.algo_nodes)
-        envs = {}
         for year in self.year_end_dataframes.years:
-            envs[year] = env_loader.load_environment(required_cols=required_cols,
-                                                     year=year)
+            new_env = env_loader.load_environment(required_cols=required_cols,
+                                                  year=year)
+            self.environments.add(new_env)
 
-        self.environments = envs
 
 
 

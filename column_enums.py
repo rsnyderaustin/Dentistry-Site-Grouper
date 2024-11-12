@@ -11,6 +11,7 @@ class WorksiteDataColumns(Enum):
 
 
 class ProviderDataColumns(Enum):
+    AGE = 'age'
     PROVIDER_ID = 'hcpid'
     PRAC_ARR_NAME = 'practicearrname'
 

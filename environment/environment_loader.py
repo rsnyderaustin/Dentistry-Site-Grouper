@@ -15,13 +15,14 @@ class OrganizationsHandler:
     def __init__(self, nodes):
         self.nodes = nodes
 
-        self.worksites = {}
-        self.organizations = {}
+        self.worksites = dict()
+        self.ultimate_parent_worksites = set()
+        self.organizations = set()
 
     def create_organizations(self):
+        self._create_organizations_from_nodes()
         self._create_worksites_from_nodes()
         self._assign_worksite_children()
-        self._create_organizations_from_nodes()
 
     def _create_worksites_from_nodes(self):
         for node in self.nodes:
@@ -29,22 +30,47 @@ class OrganizationsHandler:
                                     parent_id=node.parent_id)
             self.worksites[node.worksite_id] = new_worksite
 
+    def _find_ultimate_parent_containing_worksite(self, worksite: Worksite):
+        for org in self.organizations:
+            if any(worksite.worksite_id == org_worksite.worksite_id for org_worksite in org.worksites):
+                return org
+
+        return None
+
     def _assign_worksite_children(self):
-        for node in self.nodes:
-            worksite = self.worksites[node.worksite_id]
-            child_worksites = {self.worksites[child_node.worksite_id] for child_node in node.child_nodes}
-            worksite.add_child_worksites(child_worksites)
+        worksites_to_assign = set(worskite for worksite in self.worksites.values()
+                                  if worksite.worksite_id not in self.organizations)
+        newly_assigned_worksites = set()
+
+        loops = 1
+        while len(worksites_to_assign) > 0:
+            logging.info(f"On loop {loops}")
+            for worksite in worksites_to_assign:
+                parent_worksite = self.worksites[worksite.parent_id]
+                org_with_parent = self._find_ultimate_parent_containing_worksite(parent_worksite)
+
+                if not org_with_parent:
+                    continue
+
+                org_with_parent.add_worksite(worksite=worksite,
+                                             parent=parent_worksite)
+                newly_assigned_worksites.add(worksite)
+
+            for worksite in newly_assigned_worksites:
+                worksites_to_assign.remove(worksite)
+
+            newly_assigned_worksites = set()
+
+            loops += 1
 
     def _create_organizations_from_nodes(self):
         ultimate_parent_nodes = {node for node in self.nodes if node.is_ultimate_parent}
-        self.organizations = {Organization(self.worksites[node.worksite_id]) for node in
-                              ultimate_parent_nodes}
+        ultimate_parent_worksites = {Worksite(node.worksite_id,
+                                              node.parent_id) for node in ultimate_parent_nodes}
+        self.organizations = {Organization(ult_parent_worksite) for ult_parent_worksite in ultimate_parent_worksites}
 
     def get_relevant_organizations(self, worksite_ids):
-        return {org for org in self.organizations if org.has_one_of_worksites(worksite_ids)}
-
-    def get_worksites(self, worksite_ids):
-        return {self.worksites[id_] for id_ in worksite_ids}
+        return {org for org in self.organizations if org.has_one_of_worksite_ids(worksite_ids)}
 
 
 class EnvironmentLoader:
