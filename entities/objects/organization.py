@@ -6,12 +6,14 @@ class Organization:
     def __init__(self, ult_parent_worksite: Worksite):
         self.ult_parent_worksite = ult_parent_worksite
 
-        self.worksites = dict()
+        self.worksites = {
+            self.ult_parent_worksite.worksite_id: self.ult_parent_worksite
+        }
 
     def add_worksite(self, parent: Worksite, worksite: Worksite):
         current_parent = parent
         while current_parent != self.ult_parent_worksite:
-            current_parent.add_child_worksite(child_worksite=worksite)
+            current_parent.child_worksites[worksite.worksite_id] = worksite
             current_parent = self.worksites[current_parent.parent_id]
 
         self.worksites[worksite.worksite_id] = worksite

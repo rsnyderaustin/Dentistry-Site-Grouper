@@ -16,7 +16,7 @@ class OrganizationsHandler:
         self.nodes = nodes
 
         self.worksites = dict()
-        self.ultimate_parent_worksites = set()
+        self.ultimate_parent_worksites = dict()
         self.organizations = set()
 
     def create_organizations(self):
@@ -32,14 +32,15 @@ class OrganizationsHandler:
 
     def _find_ultimate_parent_containing_worksite(self, worksite: Worksite):
         for org in self.organizations:
-            if any(worksite.worksite_id == org_worksite.worksite_id for org_worksite in org.worksites):
+            if any({worksite.worksite_id == org_worksite.worksite_id for org_worksite in org.worksites.values()}):
                 return org
 
         return None
 
     def _assign_worksite_children(self):
-        worksites_to_assign = set(worskite for worksite in self.worksites.values()
-                                  if worksite.worksite_id not in self.organizations)
+        worksite_ids_to_assign = set(worksite_id for worksite_id in self.worksites
+                                     if worksite_id not in self.ultimate_parent_worksites)
+        worksites_to_assign = {self.worksites[worksite_id] for worksite_id in worksite_ids_to_assign}
         newly_assigned_worksites = set()
 
         loops = 1
@@ -66,7 +67,8 @@ class OrganizationsHandler:
     def _create_organizations_from_nodes(self):
         ultimate_parent_nodes = {node for node in self.nodes if node.is_ultimate_parent}
         ultimate_parent_worksites = {Worksite(node.worksite_id,
-                                              node.parent_id) for node in ultimate_parent_nodes}
+                                     node.parent_id) for node in ultimate_parent_nodes}
+        self.ultimate_parent_worksites = {worksite.worksite_id for worksite in ultimate_parent_worksites}
         self.organizations = {Organization(ult_parent_worksite) for ult_parent_worksite in ultimate_parent_worksites}
 
     def get_relevant_organizations(self, worksite_ids):
@@ -97,7 +99,7 @@ class EnvironmentLoader:
         worksite_ids = year_end_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
         relevant_orgs = {copy.deepcopy(org) for org in self.orgs_handler.get_relevant_organizations(worksite_ids=worksite_ids)}
         env.organizations = relevant_orgs
-        env.worksites = {org.all_worksites for org in env.organizations}
+        env.worksites = {org.worksites.values() for org in env.organizations}
 
         b_time = time.time()
         year_end_df.apply(entities.apply_create_provider,

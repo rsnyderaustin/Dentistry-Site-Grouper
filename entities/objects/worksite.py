@@ -27,14 +27,6 @@ class Worksite:
         self.child_worksites = dict()
         self.provider_assignments = set()
 
-    def add_child_worksite(self, child_worksite):
-        if child_worksite.parent_id == self.worksite_id:
-            self.child_worksites[child_worksite.worksite_id] = child_worksite
-            return
-        else:
-            for worksite in self.child_worksites.values():
-                worksite.add_child_worksite(child_worksite)
-
     def has_child(self, worksite_id):
         if self.worksite_id == worksite_id:
             return True
