@@ -27,3 +27,7 @@ class Organization:
         all_worksites = child_worksites.add(self.ult_parent_worksite)
         return all_worksites
 
+    @property
+    def all_provider_assignments(self):
+        return self.ult_parent_worksite.all_provider_assignments
+

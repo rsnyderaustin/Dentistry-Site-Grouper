@@ -7,6 +7,7 @@ from environment import EnvironmentManager
 
 logging.basicConfig(level=logging.INFO)
 
+
 class ProgramManager:
 
     def __init__(self, worksites_path: str, year_end_path: str):
@@ -22,13 +23,16 @@ class ProgramManager:
         required_cols = analysis_funcs.get_required_columns(func_enum=analysis_func_enum)
         environment_manager.fill_environments(required_cols=required_cols)
 
-        hcp_ids_by_size = {}
+        func_class =
+        prov_assigns_by_size = {}
         for year, env in environment_manager.environments.items():
             b_time = time.time()
-            hcp_ids_by_size[year] = analysis_funcs.process_analysis_function(
-                func_enum=AnalysisFunctions.HCP_IDS_BY_ORG_SIZE,
+            prov_assigns_by_size[year] = analysis_funcs.process_analysis_function(
+                func_enum=AnalysisFunctions.PROV_ASSIGNS_BY_ORG_SIZE,
                 environment=env
             )
-            logging.info(f"Time to process func {AnalysisFunctions.HCP_IDS_BY_ORG_SIZE} for year {year}: {time.time() - b_time}")
-        return hcp_ids_by_size
+            logging.info(f"Time to process func {AnalysisFunctions.PROV_ASSIGNS_BY_ORG_SIZE} for year {year}: {time.time() - b_time}")
+
+        format_class =
+
 

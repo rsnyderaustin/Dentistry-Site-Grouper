@@ -12,4 +12,9 @@ class WorksiteDataColumns(Enum):
 
 class ProviderDataColumns(Enum):
     PROVIDER_ID = 'hcpid'
+    PRAC_ARR_NAME = 'practicearrname'
+
+
+class OutputDataColumns(Enum):
+    ORG_SIZE = 'org_size'
 

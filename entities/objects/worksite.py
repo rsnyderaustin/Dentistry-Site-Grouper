@@ -27,6 +27,16 @@ class Worksite:
         self.child_worksites = {}
         self.provider_assignments = {}
 
+    @property
+    def all_provider_assignments(self):
+        provider_assignments = set()
+
+        for worksite in self.child_worksites.values():
+            provider_assignments.add(set(worksite.provider_assignments))
+            provider_assignments.update(worksite.all_providers)
+
+        return provider_assignments
+
     def add_child_worksites(self, child_worksites):
         for child_worksite in child_worksites:
             if child_worksite.worksite_id == self.worksite_id:
