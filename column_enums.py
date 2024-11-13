@@ -6,6 +6,7 @@ class ProgramDataColumns(Enum):
 
 
 class WorksiteDataColumns(Enum):
+    ULTIMATE_PARENT_ID = 'ultimateparentid'
     WORKSITE_ID = 'worksiteid'
     PARENT_ID = 'parentworksite'
 

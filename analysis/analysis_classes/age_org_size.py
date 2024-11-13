@@ -10,20 +10,17 @@ class Data:
     def __init__(self):
         self._data = {}
 
-    def add_providers(self, year, org_size, providers):
+    def add_organization(self, year, organization):
         if year not in self._data:
             self._data[year] = {}
 
-        if org_size not in self._data[year]:
-            self._data[year][org_size] = set()
+        self._data[year].add(organization)
 
-        self._data[year][org_size].update(providers)
-
-    def provider_generator(self):
-        for year, org_data in self._data.items():
-            for org_size, providers in org_data.items():
-                for provider in providers:
-                    yield year, org_size, provider
+    def data_generator(self):
+        for year, org in self._data.items():
+            org_size = len(org.providers)
+            for provider in org.providers:
+                yield year, org.ultimate_parent_worksite.worksite_id, org_size, provider
 
 
 class Formatter:
@@ -34,11 +31,12 @@ class Formatter:
             OutputDataColumns.ORG_SIZE.value: [],
             ProviderDataColumns.AGE.value: [],
             ProviderDataColumns.PROVIDER_ID.value: [],
-            ProviderDataColumns.PRAC_ARR_NAME.value: []
+            ProviderDataColumns.PRAC_ARR_NAME.value: [],
+            WorksiteDataColumns.WORKSITE_ID.value: []
         }
 
     def format_prov_assign_by_org_size(self, data: Data):
-        for year, org_size, provider in data.provider_generator():
+        for year, ult_parent_id, org_size, provider in data.data_generator():
             self.output[ProgramDataColumns.YEAR.value].append(year)
             self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
             self.output[ProviderDataColumns.AGE.value].append(
@@ -50,6 +48,7 @@ class Formatter:
             self.output[ProviderDataColumns.PRAC_ARR_NAME.value].append(
                 getattr(provider, ProviderDataColumns.PRAC_ARR_NAME.value)
             )
+            self.output[WorksiteDataColumns.ULTIMATE_PARENT_ID.value].append(ult_parent_id)
         return pd.DataFrame(self.output)
 
 
@@ -62,15 +61,10 @@ class AgeByOrgSize(AnalysisClass):
 
     def process_data(self, environments):
         for environment in environments:
-            for organization in environment.organizations:
-                org_size = len(organization.worksites)
-                prov_assigns = organization.all_provider_assignments
-                providers = set(prov_assign.provider for prov_assign in prov_assigns)
-                self.data.add_providers(
+            for organization in environment.organizations.values():
+                self.data.add_organization(
                     year=environment.year,
-                    org_size=org_size,
-                    providers=providers
-                )
+                    organization=organization)
 
     def get_dataframe(self):
         formatter = Formatter()

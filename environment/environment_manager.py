@@ -33,6 +33,7 @@ class EnvironmentManager:
         worksite_parent_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
         env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
                                        year_end_df=self.year_end_df,
+                                       required_cols=required_cols,
                                        worksite_parent_relations=worksite_parent_relations)
 
         for year in self.year_end_dataframes.years:
