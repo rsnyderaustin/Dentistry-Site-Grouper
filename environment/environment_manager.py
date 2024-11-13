@@ -1,17 +1,9 @@
 import pandas as pd
 
-from .environment import Environment
-from .environment_loader import EnvironmentLoader
+from environment.environment_loader import EnvironmentLoader
 from .worksite_parent_relations import WorksiteParentRelations
-from algo import HierarchyAlgo
-from column_enums import ProgramDataColumns, WorksiteDataColumns
+from column_enums import WorksiteDataColumns
 import preprocessing
-
-
-def _generate_algo_nodes(child_parent_tuples):
-    algo = HierarchyAlgo(child_parent_tuples=child_parent_tuples)
-    algo_nodes = algo.create_hierarchy()
-    return algo_nodes
 
 
 class EnvironmentManager:
@@ -29,17 +21,20 @@ class EnvironmentManager:
             worksites_df[WorksiteDataColumns.WORKSITE_ID.value],
             worksites_df[WorksiteDataColumns.PARENT_ID.value]
         ))
-        self.algo_nodes = _generate_algo_nodes(child_parent_tuples=child_parent_tuples)
-
         self.site_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
 
-        self.ultimate_parent_ids = {worksite_id for worksite_id in self.site_relations.child_to_parent.keys()
-                                    if self.site_relations.child_to_parent[worksite_id] == worksite_id}
+        worksite_ids = self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value].unique().tolist()
+        self.ultimate_parent_ids = {worksite_id for worksite_id in worksite_ids
+                                    if self.site_relations.get_parent_id(worksite_id) == worksite_id}
 
     def fill_environments(self, required_cols):
+        child_parent_tuples = list(zip(self.worksites_df[WorksiteDataColumns.WORKSITE_ID.value],
+                                       self.worksites_df[WorksiteDataColumns.PARENT_ID.value]))
+        worksite_parent_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
         env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
                                        year_end_df=self.year_end_df,
-                                       algo_nodes=self.algo_nodes)
+                                       worksite_parent_relations=worksite_parent_relations)
+
         for year in self.year_end_dataframes.years:
             new_env = env_loader.load_environment(required_cols=required_cols,
                                                   year=year)

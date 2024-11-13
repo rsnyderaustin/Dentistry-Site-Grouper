@@ -1,9 +1,8 @@
 import pandas as pd
 
 from .analysis_class import AnalysisClass
-from column_enums import OutputDataColumns, ProgramDataColumns, ProviderDataColumns, WorksiteDataColumns
+from column_enums import OutputDataColumns, ProgramDataColumns, ProviderDataColumns
 from entities import RequiredEntitiesColumns
-from environment import Environment
 
 
 class Data:
