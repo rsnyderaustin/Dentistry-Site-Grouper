@@ -3,8 +3,8 @@
 class Worksite:
 
     def __init__(self, worksite_id: int, parent_id: int, worksite_data: dict = None):
-        self.worksiteid = worksite_id
-        self.parentid = parent_id
+        self.worksite_id = worksite_id
+        self.parent_id = parent_id
 
         self.organization_id = None
 
@@ -19,7 +19,7 @@ class Worksite:
         self.provider_assignments.add(provider_assignment)
 
     def has_child(self, worksite_id):
-        if self.worksiteid == worksite_id:
+        if self.worksite_id == worksite_id:
             return True
 
         for worksite_id, worksite in self.child_worksites.items():
@@ -29,7 +29,7 @@ class Worksite:
         return False
 
     def has_one_of_child(self, worksite_ids):
-        if self.worksiteid in worksite_ids:
+        if self.worksite_id in worksite_ids:
             return True
 
         for worksite_id, worksite in self.child_worksites.items():

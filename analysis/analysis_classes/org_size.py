@@ -22,7 +22,7 @@ class Data:
             for org in org_set:
                 org_size = len(org.providers)
                 for provider_assignment in org.provider_assignments:
-                    yield year, org.ult_parent_worksite.worksiteid, org_size, provider_assignment
+                    yield year, org.ult_parent_worksite.worksite_id, org_size, provider_assignment
 
 
 class Formatter:

@@ -39,35 +39,42 @@ class EnvironmentLoader:
         self.organizations_loaded = False
         self.current_load = None
 
+    def _load_worksite_data(self, worksite_id):
+        worksite_rows = self.worksites_df.query(
+            f"{WorksiteDataColumns.WORKSITE_ID.value} == {worksite_id}")
+        worksite_row = worksite_rows.iloc[0]
+        worksite_data = {col: worksite_row[col] for col in self.required_cols.worksite_columns}
+        return worksite_data
+
     def _load_organizations(self):
         # Fill repository with worksites and organizations
         logging.info("Starting to fill repository with worksites and organizations.")
         for relation in self.worksite_parent_relations.relationships:
-            if relation.worksiteid not in self.repository.worksites:
+            if relation.worksite_id not in self.repository.worksites:
                 worksite_rows = self.worksites_df.query(
-                    f"{WorksiteDataColumns.WORKSITE_ID.value} == {relation.worksiteid}")
+                    f"{WorksiteDataColumns.WORKSITE_ID.value} == {relation.worksite_id}")
                 worksite_row = worksite_rows.iloc[0]
                 worksite_data = {col: worksite_row[col] for col in self.required_cols.worksite_columns}
-                new_worksite = Worksite(relation.worksiteid,
-                                        parent_id=relation.parentid,
+                new_worksite = Worksite(relation.worksite_id,
+                                        parent_id=relation.parent_id,
                                         worksite_data=worksite_data)
-                self.repository.worksites[relation.worksiteid] = new_worksite
+                self.repository.worksites[relation.worksite_id] = new_worksite
 
-                if relation.parentid == relation.worksiteid and relation.worksiteid not in self.repository.organizations:
+                if relation.parent_id == relation.worksite_id and relation.worksite_id not in self.repository.organizations:
                     new_org = Organization(ult_parent_worksite=new_worksite)
-                    self.repository.organizations[relation.worksiteid] = new_org
+                    self.repository.organizations[relation.worksite_id] = new_org
         logging.info("Finished filling repository.")
 
         # Add worksites to organizations
         non_ult_parent_worksites = {worksite for worksite in self.repository.worksites.values()
-                                    if worksite.worksiteid != worksite.parentid}
+                                    if worksite.worksite_id != worksite.parent_id}
         loops = 0
         while len(non_ult_parent_worksites) > 0:
             logging.info(f"Loop number {loops}")
             added_worksites = set()
             for org in self.repository.organizations.values():
                 for worksite in non_ult_parent_worksites:
-                    parent_worksite_id = self.worksite_parent_relations.get_parent_id(worksite.worksiteid)
+                    parent_worksite_id = self.worksite_parent_relations.get_parent_id(worksite.worksite_id)
                     if parent_worksite_id in org.worksites:
                         org.add_worksite(worksite=worksite,
                                          parent=self.repository.worksites[parent_worksite_id])
@@ -80,7 +87,7 @@ class EnvironmentLoader:
         # Fill worksite_id_to_ultimate_parent_id dict
         for ult_parent_id, org in self.repository.organizations.items():
             for worksite in org.worksites.values():
-                self.worksite_id_to_ultimate_parent_id[worksite.worksiteid] = ult_parent_id
+                self.worksite_id_to_ultimate_parent_id[worksite.worksite_id] = ult_parent_id
 
         self.organizations_loaded = True
 

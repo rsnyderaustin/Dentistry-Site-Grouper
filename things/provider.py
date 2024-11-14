@@ -15,5 +15,5 @@ class Provider:
 
     def get_assignment(self, worksite_id):
         for assignment in self.assignments:
-            if assignment.worksiteid == worksite_id:
+            if assignment.worksite_id == worksite_id:
                 return assignment

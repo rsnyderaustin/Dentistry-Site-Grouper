@@ -4,8 +4,8 @@ from column_enums import WorksiteDataColumns
 class Relationship:
 
     def __init__(self, worksite_id, parent_id):
-        setattr(self, WorksiteDataColumns.WORKSITE_ID.value, worksite_id)
-        setattr(self, WorksiteDataColumns.PARENT_ID.value, parent_id)
+        self.worksite_id = worksite_id
+        self.parent_id = parent_id
 
 
 class WorksiteParentRelations:
@@ -17,12 +17,12 @@ class WorksiteParentRelations:
         self._child_to_parent = {}
         self._parent_to_children = {}
 
-        self._create_relations(child_parent_tuples)
+        self._fill_dicts()
 
-    def _create_relations(self, child_parent_tuples):
-        for tup in child_parent_tuples:
-            worksite_id = tup[0]
-            parent_id = tup[1]
+    def _fill_dicts(self):
+        for relation in self.relationships:
+            worksite_id = getattr(relation, WorksiteDataColumns.WORKSITE_ID.value)
+            parent_id = getattr(relation, WorksiteDataColumns.PARENT_ID.value)
             if worksite_id not in self._child_to_parent:
                 self._child_to_parent[worksite_id] = parent_id
 

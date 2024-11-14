@@ -6,18 +6,18 @@ class ProgramDataColumns(Enum):
 
 
 class WorksiteDataColumns(Enum):
-    ULTIMATE_PARENT_ID = 'ultimateparentid'
-    WORKSITE_ID = 'worksiteid'
-    PARENT_ID = 'parentid'
+    ULTIMATE_PARENT_ID = 'ultimate_parent_id'
+    WORKSITE_ID = 'worksite_id'
+    PARENT_ID = 'parent_id'
 
 
 class ProviderDataColumns(Enum):
     AGE = 'age'
-    PROVIDER_ID = 'hcpid'
+    PROVIDER_ID = 'hcp_id'
 
 
 class ProviderAtWorksiteDataColumns(Enum):
-    PRAC_ARR_NAME = 'practicearrname'
+    PRAC_ARR_NAME = 'practice_arr_name'
 
 
 class OutputDataColumns(Enum):
