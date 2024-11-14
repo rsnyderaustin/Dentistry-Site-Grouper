@@ -1,10 +1,11 @@
+from column_enums import WorksiteDataColumns
 
 
 class Relationship:
 
     def __init__(self, worksite_id, parent_id):
-        self.worksite_id = worksite_id
-        self.parent_id = parent_id
+        setattr(self, WorksiteDataColumns.WORKSITE_ID.value, worksite_id)
+        setattr(self, WorksiteDataColumns.PARENT_ID.value, parent_id)
 
 
 class WorksiteParentRelations:

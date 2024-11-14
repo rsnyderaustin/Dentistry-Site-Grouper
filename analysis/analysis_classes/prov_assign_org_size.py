@@ -2,7 +2,7 @@ import pandas as pd
 
 from .analysis_class import AnalysisClass
 from column_enums import OutputDataColumns, ProgramDataColumns, ProviderDataColumns
-from entities import RequiredEntitiesColumns
+from things import RequiredEntitiesColumns
 
 
 class Data:

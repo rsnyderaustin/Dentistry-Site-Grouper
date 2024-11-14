@@ -1,8 +1,9 @@
 import pandas as pd
 
 from .analysis_class import AnalysisClass
-from column_enums import OutputDataColumns, ProgramDataColumns, ProviderDataColumns, WorksiteDataColumns
-from entities import RequiredEntitiesColumns
+from column_enums import (OutputDataColumns, ProgramDataColumns, ProviderAtWorksiteDataColumns, ProviderDataColumns,
+                          WorksiteDataColumns)
+from things import RequiredEntitiesColumns
 
 
 class Data:
@@ -12,15 +13,16 @@ class Data:
 
     def add_organization(self, year, organization):
         if year not in self._data:
-            self._data[year] = {}
+            self._data[year] = set()
 
         self._data[year].add(organization)
 
     def data_generator(self):
-        for year, org in self._data.items():
-            org_size = len(org.providers)
-            for provider in org.providers:
-                yield year, org.ultimate_parent_worksite.worksite_id, org_size, provider
+        for year, org_set in self._data.items():
+            for org in org_set:
+                org_size = len(org.providers)
+                for provider_assignment in org.provider_assignments:
+                    yield year, org.ult_parent_worksite.worksiteid, org_size, provider_assignment
 
 
 class Formatter:
@@ -31,12 +33,15 @@ class Formatter:
             OutputDataColumns.ORG_SIZE.value: [],
             ProviderDataColumns.AGE.value: [],
             ProviderDataColumns.PROVIDER_ID.value: [],
-            ProviderDataColumns.PRAC_ARR_NAME.value: [],
-            WorksiteDataColumns.WORKSITE_ID.value: []
+            ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value: [],
+            WorksiteDataColumns.WORKSITE_ID.value: [],
+            WorksiteDataColumns.ULTIMATE_PARENT_ID.value: []
         }
 
     def format_prov_assign_by_org_size(self, data: Data):
-        for year, ult_parent_id, org_size, provider in data.data_generator():
+        for year, ult_parent_id, org_size, provider_assignment in data.data_generator():
+            provider = provider_assignment.provider
+            worksite = provider_assignment.worksite
             self.output[ProgramDataColumns.YEAR.value].append(year)
             self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
             self.output[ProviderDataColumns.AGE.value].append(
@@ -45,8 +50,11 @@ class Formatter:
             self.output[ProviderDataColumns.PROVIDER_ID.value].append(
                 getattr(provider, ProviderDataColumns.PROVIDER_ID.value)
             )
-            self.output[ProviderDataColumns.PRAC_ARR_NAME.value].append(
-                getattr(provider, ProviderDataColumns.PRAC_ARR_NAME.value)
+            self.output[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value].append(
+                getattr(provider_assignment, ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value)
+            )
+            self.output[WorksiteDataColumns.WORKSITE_ID.value].append(
+                getattr(worksite, WorksiteDataColumns.WORKSITE_ID.value)
             )
             self.output[WorksiteDataColumns.ULTIMATE_PARENT_ID.value].append(ult_parent_id)
         return pd.DataFrame(self.output)
@@ -74,6 +82,5 @@ class AgeByOrgSize(AnalysisClass):
     @property
     def required_columns(self):
         return RequiredEntitiesColumns(worksite_columns=[],
-                                       provider_columns=[ProviderDataColumns.AGE.value,
-                                                         ProviderDataColumns.PRAC_ARR_NAME.value],
-                                       provider_at_worksite_columns=[])
+                                       provider_columns=[ProviderDataColumns.AGE.value],
+                                       provider_at_worksite_columns=[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value])

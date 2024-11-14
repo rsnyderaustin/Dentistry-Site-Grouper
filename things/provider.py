@@ -12,3 +12,8 @@ class Provider:
         if provider_data:
             for k, v in provider_data.items():
                 setattr(self, k, v)
+
+    def get_assignment(self, worksite_id):
+        for assignment in self.assignments:
+            if assignment.worksiteid == worksite_id:
+                return assignment
