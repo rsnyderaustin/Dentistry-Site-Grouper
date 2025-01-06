@@ -75,7 +75,7 @@ class EnvironmentLoader:
             for org in self.repository.organizations.values():
                 for worksite in non_ult_parent_worksites:
                     parent_worksite_id = self.worksite_parent_relations.get_parent_id(worksite.worksite_id)
-                    if parent_worksite_id in org.worksites:
+                    if parent_worksite_id in org.worksites_by_id:
                         org.add_worksite(worksite=worksite,
                                          parent=self.repository.worksites[parent_worksite_id])
                         added_worksites.add(worksite)
@@ -86,7 +86,7 @@ class EnvironmentLoader:
 
         # Fill worksite_id_to_ultimate_parent_id dict
         for ult_parent_id, org in self.repository.organizations.items():
-            for worksite in org.worksites.values():
+            for worksite in org.worksites_by_id.values():
                 self.worksite_id_to_ultimate_parent_id[worksite.worksite_id] = ult_parent_id
 
         self.organizations_loaded = True
@@ -102,24 +102,24 @@ class EnvironmentLoader:
         if ult_parent_id not in self.current_load.env.organizations:
             self.current_load.env.organizations[ult_parent_id] = organization
 
-        worksite = organization.worksites[worksite_id]
-        if worksite_id not in self.current_load.env.worksites:
-            self.current_load.env.worksites[worksite_id] = worksite
+        worksite = organization.worksites_by_id[worksite_id]
+        if worksite_id not in self.current_load.env.worksites_by_id:
+            self.current_load.env.worksites_by_id[worksite_id] = worksite
 
-        if hcp_id not in self.current_load.env.providers:
+        if hcp_id not in self.current_load.env.providers_by_id:
             provider_data = {col: row[col] for col in required_cols.provider_columns}
             provider = Provider(hcp_id=hcp_id,
                                 provider_data=provider_data)
-            self.current_load.env.providers[hcp_id] = provider
+            self.current_load.env.providers_by_id[hcp_id] = provider
 
-        provider = self.current_load.env.providers[hcp_id]
+        provider = self.current_load.env.providers_by_id[hcp_id]
 
         provider_at_worksite_data = {col: row[col] for col in required_cols.provider_at_worksite_columns}
 
         prov_assign = ProviderAssignment(
-            provider=self.current_load.env.providers[hcp_id],
-            worksite=self.current_load.env.worksites[worksite_id],
-            assignment_data=provider_at_worksite_data
+            provider=self.current_load.env.providers_by_id[hcp_id],
+            worksite=self.current_load.env.worksites_by_id[worksite_id],
+            **provider_at_worksite_data
         )
 
         provider.assignments.add(prov_assign)

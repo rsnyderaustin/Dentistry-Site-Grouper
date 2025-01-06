@@ -2,15 +2,14 @@
 
 class Worksite:
 
-    def __init__(self, worksite_id: int, parent_id: int, worksite_data: dict = None):
+    def __init__(self, worksite_id: int, parent_id: int, **kwargs):
         self.worksite_id = worksite_id
         self.parent_id = parent_id
 
         self.organization_id = None
 
-        if worksite_data:
-            for k, v in worksite_data.items():
-                setattr(self, k, v)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
         self.child_worksites = dict()
         self.provider_assignments = set()

@@ -1,28 +1,9 @@
 import pandas as pd
 
-from .analysis_class import AnalysisClass
+from .analysis_class import AnalysisClass, Data
 from column_enums import (OutputDataColumns, ProgramDataColumns, ProviderAtWorksiteDataColumns, ProviderDataColumns,
                           WorksiteDataColumns)
 from things import RequiredEntitiesColumns
-
-
-class Data:
-
-    def __init__(self):
-        self._data = {}
-
-    def add_organization(self, year, organization):
-        if year not in self._data:
-            self._data[year] = set()
-
-        self._data[year].add(organization)
-
-    def data_generator(self):
-        for year, org_set in self._data.items():
-            for org in org_set:
-                org_size = len(org.providers)
-                for provider_assignment in org.provider_assignments:
-                    yield year, org.ult_parent_worksite.worksite_id, org_size, provider_assignment
 
 
 class Formatter:
@@ -34,6 +15,7 @@ class Formatter:
             ProviderDataColumns.AGE.value: [],
             ProviderDataColumns.PROVIDER_ID.value: [],
             ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value: [],
+            ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value: [],
             WorksiteDataColumns.WORKSITE_ID.value: [],
             WorksiteDataColumns.ULTIMATE_PARENT_ID.value: []
         }
@@ -52,6 +34,9 @@ class Formatter:
             )
             self.output[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value].append(
                 getattr(provider_assignment, ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value)
+            )
+            self.output[ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value].append(
+                getattr(provider_assignment, ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value)
             )
             self.output[WorksiteDataColumns.WORKSITE_ID.value].append(
                 getattr(worksite, WorksiteDataColumns.WORKSITE_ID.value)
@@ -83,4 +68,6 @@ class AgeByOrgSize(AnalysisClass):
     def required_columns(self):
         return RequiredEntitiesColumns(worksite_columns=[],
                                        provider_columns=[ProviderDataColumns.AGE.value],
-                                       provider_at_worksite_columns=[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value])
+                                       provider_at_worksite_columns=[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value,
+                                                                     ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value])
+

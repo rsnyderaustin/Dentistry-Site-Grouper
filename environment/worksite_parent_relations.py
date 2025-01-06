@@ -21,8 +21,9 @@ class WorksiteParentRelations:
 
     def _fill_dicts(self):
         for relation in self.relationships:
-            worksite_id = getattr(relation, WorksiteDataColumns.WORKSITE_ID.value)
-            parent_id = getattr(relation, WorksiteDataColumns.PARENT_ID.value)
+            worksite_id = relation.worksite_id
+            parent_id = relation.parent_id
+            
             if worksite_id not in self._child_to_parent:
                 self._child_to_parent[worksite_id] = parent_id
 

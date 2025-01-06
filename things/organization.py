@@ -1,5 +1,6 @@
 from .worksite import Worksite
 from .provider_assignment import ProviderAssignment
+from column_enums import PracticeArrangements, ProviderAtWorksiteDataColumns
 
 
 class Organization:
@@ -7,30 +8,69 @@ class Organization:
     def __init__(self, ult_parent_worksite: Worksite):
         self.ult_parent_worksite = ult_parent_worksite
 
-        self.worksites = {
+        self.worksites_by_id = {
             self.ult_parent_worksite.worksite_id: self.ult_parent_worksite
         }
         self.providers = set()
         self.provider_assignments = set()
 
+    @property
+    def number_of_dentists(self):
+        return len(self.providers)
+
+    @property
+    def ultimate_parent_id(self):
+        return self.ult_parent_worksite.worksite_id
+
     def add_worksite(self, parent: Worksite, worksite: Worksite):
         current_parent = parent
         while current_parent != self.ult_parent_worksite:
             current_parent.child_worksites[worksite.worksite_id] = worksite
-            current_parent = self.worksites[current_parent.parent_id]
+            current_parent = self.worksites_by_id[current_parent.parent_id]
 
-        self.worksites[worksite.worksite_id] = worksite
+        self.worksites_by_id[worksite.worksite_id] = worksite
 
     def add_provider_assignment(self, worksite: Worksite, provider_assignment: ProviderAssignment):
-        if worksite.worksite_id not in self.worksites:
+        if worksite.worksite_id not in self.worksites_by_id:
             raise KeyError(f"Attempted to add provider assignment to worksite with Worksite ID {worksite.worksite_id},"
                            f"when that Worksite ID is not present in this Organization's worksites.")
         self.provider_assignments.add(provider_assignment)
 
-        worksite = self.worksites[worksite.worksite_id]
+        worksite = self.worksites_by_id[worksite.worksite_id]
         worksite.add_provider_assignment(provider_assignment)
 
     def has_which_worksites(self, worksite_ids):
-        has_worksites = {worksite for worksite in self.worksites.values() if worksite.worksite_id in worksite_ids}
+        has_worksites = {worksite for worksite in self.worksites_by_id.values() if worksite.worksite_id in worksite_ids}
         return has_worksites
+
+    def classify(self) -> dict:
+        is_corporate = any([getattr(prov_assign, ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value) == PracticeArrangements.CORPORATE.value
+                           for prov_assign in self.provider_assignments])
+        if is_corporate:
+            return {worksite.worksite_id: PracticeArrangements.CORPORATE.value for worksite in self.worksites_by_id.values()}
+
+        is_hospital_sponsored = any(getattr(prov_assign, ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value) == PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value
+                                    for prov_assign in self.provider_assignments)
+
+        if is_hospital_sponsored:
+            return {worksite.worksite_id: PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value for worksite in self.worksites_by_id.values()}
+
+        classifications = {}
+        for worksite in self.worksites_by_id.values():
+            total_hours_visited = sum([getattr(prov_assign, ProviderAtWorksiteDataColumns.WK_WEEKS.value)
+                                       for prov_assign in worksite.provider_assignments])
+            if total_hours_visited < 30:
+                classifications[worksite.worksite_id] = PracticeArrangements.SATELLITE.value
+                continue
+
+        leftover_worksites = {worksite for worksite in self.worksites_by_id.values() if worksite.worksite_id not in classifications}
+
+        for worksite in leftover_worksites:
+            classifications[worksite.worksite_id] = "Dental Site"
+
+        return classifications
+
+
+
+
 

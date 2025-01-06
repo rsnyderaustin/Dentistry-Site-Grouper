@@ -4,11 +4,10 @@ from .worksite import Worksite
 
 class ProviderAssignment:
 
-    def __init__(self, provider: Provider, worksite: Worksite, assignment_data: dict = None):
+    def __init__(self, provider: Provider, worksite: Worksite, **kwargs):
         self.provider = provider
         self.worksite = worksite
-        self.assignment_data = assignment_data
 
-        for k, v in assignment_data.items():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
