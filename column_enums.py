@@ -7,19 +7,30 @@ class ProgramDataColumns(Enum):
 
 class WorksiteDataColumns(Enum):
     ULTIMATE_PARENT_ID = 'ultimate_parent_id'
-    WORKSITE_ID = 'worksite_id'
-    PARENT_ID = 'parent_id'
+    WORKSITE_ID = 'worksiteid'
+    PARENT_ID = 'parentid'
+    SITE_STATUS = 'site_status'
+    LATITUDE = 'site_latitude'
+    LONGITUDE = 'site_longitude'
+
+
+class SiteStatus(Enum):
+    OPEN = 'open'
+    CLOSED = 'closed'
 
 
 class ProviderDataColumns(Enum):
     AGE = 'age'
-    PROVIDER_ID = 'hcp_id'
+    HCP_ID = 'hcpid'
 
 
 class ProviderAtWorksiteDataColumns(Enum):
     PRAC_ARR_NAME = 'practice_arr_name'
-    SPECIALTY_NAME = 'specialty_name'
+    SPECIALTY_NAME = 'specialtyname'
     WK_WEEKS = 'wkweeks'
+    WK_HOURS = 'wkhours'
+    FULL_TIME = 'FT'
+    PART_TIME = 'PT'
 
 
 class PracticeArrangements(Enum):
@@ -27,10 +38,11 @@ class PracticeArrangements(Enum):
     SOLO_PRACTICE = 'Solo Practice'
     HOSPITAL_SPONSORED_PRACTICE = 'Hospital Sponsored Practice'
     SATELLITE = 'Satellite'
+    MULTISITE_DENTAL_GROUP = 'Multisite Dental Group'
 
 
 class OutputDataColumns(Enum):
     ORG_SIZE = 'org_size'
     CLASSIFICATION = 'classification'
-    WORKSITE_ID = 'worksite_id'
+    WORKSITE_ID = 'worksiteid'
 

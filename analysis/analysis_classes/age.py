@@ -13,7 +13,7 @@ class Formatter:
             ProgramDataColumns.YEAR.value: [],
             OutputDataColumns.ORG_SIZE.value: [],
             ProviderDataColumns.AGE.value: [],
-            ProviderDataColumns.PROVIDER_ID.value: [],
+            ProviderDataColumns.HCP_ID.value: [],
             ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value: [],
             ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value: [],
             WorksiteDataColumns.WORKSITE_ID.value: [],
@@ -29,8 +29,8 @@ class Formatter:
             self.output[ProviderDataColumns.AGE.value].append(
                 getattr(provider, ProviderDataColumns.AGE.value)
             )
-            self.output[ProviderDataColumns.PROVIDER_ID.value].append(
-                getattr(provider, ProviderDataColumns.PROVIDER_ID.value)
+            self.output[ProviderDataColumns.HCP_ID.value].append(
+                getattr(provider, ProviderDataColumns.HCP_ID.value)
             )
             self.output[ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value].append(
                 getattr(provider_assignment, ProviderAtWorksiteDataColumns.PRAC_ARR_NAME.value)

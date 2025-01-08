@@ -5,7 +5,7 @@ from column_enums import ProviderDataColumns
 class Provider:
 
     def __init__(self, hcp_id: int, provider_data: dict = None):
-        setattr(self, ProviderDataColumns.PROVIDER_ID.value, hcp_id)
+        setattr(self, ProviderDataColumns.HCP_ID.value, hcp_id)
 
         self.assignments = set()
 

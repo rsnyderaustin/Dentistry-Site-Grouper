@@ -92,7 +92,7 @@ class EnvironmentLoader:
         self.organizations_loaded = True
 
     def _apply_create_entities(self, row, required_cols: RequiredEntitiesColumns):
-        hcp_id = row[ProviderDataColumns.PROVIDER_ID.value]
+        hcp_id = row[ProviderDataColumns.HCP_ID.value]
         worksite_id = row[WorksiteDataColumns.WORKSITE_ID.value]
         ult_parent_id = self.worksite_id_to_ultimate_parent_id[worksite_id]
 
@@ -135,6 +135,7 @@ class EnvironmentLoader:
         self.current_load = CurrentLoad(year_end_df=self.year_end_dataframes.get_dataframe(year),
                                         year=year,
                                         env=Environment(year=year))
+
         self.current_load.year_end_df.apply(self._apply_create_entities, required_cols=required_cols, axis=1)
 
         return self.current_load.env

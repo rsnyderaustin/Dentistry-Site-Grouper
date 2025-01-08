@@ -8,8 +8,9 @@ prog_manager = program_manager.ProgramManager(
     year_end_path="C:/Users/austisnyder/programming/programming_i_o_files/dds_years_data.csv"
 )
 
-df = prog_manager.analyze(AnalysisFunctions.CLASSIFICATIONS)
+df = prog_manager.analyze(AnalysisFunctions.CLASSIFICATIONS,
+                          simplify_practice_arrangements=True)
 
-df.to_excel("C:/Users/austisnyder/programming/programming_i_o_files/ages_by_org_size.xlsx")
+df.to_excel("C:/Users/austisnyder/programming/programming_i_o_files/classifies.xlsx")
 
 
