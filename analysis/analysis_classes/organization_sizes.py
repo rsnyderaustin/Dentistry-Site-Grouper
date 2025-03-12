@@ -1,9 +1,8 @@
 
 import pandas as pd
 
-from .analysis_class import AnalysisClass, Data
-from column_enums import (OutputDataColumns, ProgramDataColumns, ProviderAtWorksiteDataColumns, ProviderDataColumns,
-                          WorksiteDataColumns)
+from .analysis_base_class import AnalysisClass, Data
+from utils.enums import AnalysisFunctionAttributes, OutputDataColumns, ProgramColumns, ProviderEnums, WorksiteEnums
 from things import RequiredEntitiesColumns
 
 
@@ -11,17 +10,17 @@ class Formatter:
 
     def __init__(self):
         self.output = {
-            ProgramDataColumns.YEAR.value: [],
+            ProgramColumns.YEAR.value: [],
             OutputDataColumns.ORG_SIZE.value: [],
-            WorksiteDataColumns.ULTIMATE_PARENT_ID.value: []
+            WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
     def format(self, data: Data):
         for year, organizations in data.organizations_by_year.items():
-            self.output[ProgramDataColumns.YEAR.value].extend([year for _ in range(len(organizations))])
+            self.output[ProgramColumns.YEAR.value].extend([year for _ in range(len(organizations))])
             for org in organizations:
                 self.output[OutputDataColumns.ORG_SIZE.value].append(org.number_of_dentists)
-                self.output[WorksiteDataColumns.ULTIMATE_PARENT_ID.value].append(org.ultimate_parent_id)
+                self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(org.ultimate_parent_id)
         return pd.DataFrame(self.output)
 
 

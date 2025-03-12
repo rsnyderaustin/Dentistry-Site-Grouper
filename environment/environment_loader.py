@@ -3,7 +3,7 @@ import logging
 
 from .worksite_parent_relations import WorksiteParentRelations
 from environment.environment import Environment
-from column_enums import ProviderDataColumns, WorksiteDataColumns
+from utils.enums import ProviderEnums, WorksiteEnums
 from things import Organization, Provider, ProviderAssignment, RequiredEntitiesColumns, Worksite
 import preprocessing
 
@@ -41,7 +41,7 @@ class EnvironmentLoader:
 
     def _load_worksite_data(self, worksite_id):
         worksite_rows = self.worksites_df.query(
-            f"{WorksiteDataColumns.WORKSITE_ID.value} == {worksite_id}")
+            f"{WorksiteEnums.Attributes.WORKSITE_ID.value} == {worksite_id}")
         worksite_row = worksite_rows.iloc[0]
         worksite_data = {col: worksite_row[col] for col in self.required_cols.worksite_columns}
         return worksite_data
@@ -49,15 +49,17 @@ class EnvironmentLoader:
     def _load_organizations(self):
         # Fill repository with worksites and organizations
         logging.info("Starting to fill repository with worksites and organizations.")
+
         for relation in self.worksite_parent_relations.relationships:
+
             if relation.worksite_id not in self.repository.worksites:
                 worksite_rows = self.worksites_df.query(
-                    f"{WorksiteDataColumns.WORKSITE_ID.value} == {relation.worksite_id}")
+                    f"{WorksiteEnums.Attributes.WORKSITE_ID.value} == {relation.worksite_id}")
                 worksite_row = worksite_rows.iloc[0]
-                worksite_data = {col: worksite_row[col] for col in self.required_cols.worksite_columns}
-                new_worksite = Worksite(relation.worksite_id,
+                worksite_data = {col_enum.value: worksite_row[col_enum.value] for col_enum in self.required_cols.worksite_columns}
+                new_worksite = Worksite(worksite_id=relation.worksite_id,
                                         parent_id=relation.parent_id,
-                                        worksite_data=worksite_data)
+                                        **worksite_data)
                 self.repository.worksites[relation.worksite_id] = new_worksite
 
                 if relation.parent_id == relation.worksite_id and relation.worksite_id not in self.repository.organizations:
@@ -92,8 +94,8 @@ class EnvironmentLoader:
         self.organizations_loaded = True
 
     def _apply_create_entities(self, row, required_cols: RequiredEntitiesColumns):
-        hcp_id = row[ProviderDataColumns.HCP_ID.value]
-        worksite_id = row[WorksiteDataColumns.WORKSITE_ID.value]
+        hcp_id = row[ProviderEnums.Attributes.HCP_ID.value]
+        worksite_id = row[WorksiteEnums.Attributes.WORKSITE_ID.value]
         ult_parent_id = self.worksite_id_to_ultimate_parent_id[worksite_id]
 
         organization = self.current_load.env.organizations.get(
@@ -107,14 +109,14 @@ class EnvironmentLoader:
             self.current_load.env.worksites_by_id[worksite_id] = worksite
 
         if hcp_id not in self.current_load.env.providers_by_id:
-            provider_data = {col: row[col] for col in required_cols.provider_columns}
+            provider_data = {col_enum.value: row[col_enum.value] for col_enum in required_cols.provider_columns}
             provider = Provider(hcp_id=hcp_id,
-                                provider_data=provider_data)
+                                **provider_data)
             self.current_load.env.providers_by_id[hcp_id] = provider
 
         provider = self.current_load.env.providers_by_id[hcp_id]
 
-        provider_at_worksite_data = {col: row[col] for col in required_cols.provider_at_worksite_columns}
+        provider_at_worksite_data = {col_enum.value: row[col_enum.value] for col_enum in required_cols.provider_at_worksite_columns}
 
         prov_assign = ProviderAssignment(
             provider=self.current_load.env.providers_by_id[hcp_id],

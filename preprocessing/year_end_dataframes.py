@@ -1,13 +1,13 @@
 import pandas as pd
 
-from column_enums import ProgramDataColumns
+from utils.enums import ProgramColumns
 
 
 def _get_years_from_dataframe(df: pd.DataFrame):
-    if ProgramDataColumns.YEAR.value not in df.columns:
-        raise ValueError(f"Must include the column '{ProgramDataColumns.YEAR.value} in the input dataframe.")
+    if ProgramColumns.YEAR.value not in df.columns:
+        raise ValueError(f"Must include the column '{ProgramColumns.YEAR.value} in the input dataframe.")
 
-    years = df[ProgramDataColumns.YEAR.value].unique().tolist()
+    years = df[ProgramColumns.YEAR.value].unique().tolist()
     years = sorted(years)
     return years
 
@@ -15,7 +15,7 @@ def _get_years_from_dataframe(df: pd.DataFrame):
 def _split_by_year(df: pd.DataFrame):
     df_years = _get_years_from_dataframe(df=df)
 
-    dfs = {year: df.query(f"{ProgramDataColumns.YEAR.value} == {year}") for year in df_years}
+    dfs = {year: df.query(f"{ProgramColumns.YEAR.value} == {year}") for year in df_years}
 
     return dfs
 

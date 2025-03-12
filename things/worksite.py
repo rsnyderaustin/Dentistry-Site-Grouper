@@ -1,5 +1,6 @@
 
-from column_enums import ProviderAtWorksiteDataColumns
+from utils.enums import ProviderEnums
+
 
 class Worksite:
 
@@ -17,16 +18,10 @@ class Worksite:
 
     @property
     def provider_specialties(self):
-        return {getattr(prov_assign, ProviderAtWorksiteDataColumns.SPECIALTY_NAME.value) for prov_assign in self.provider_assignments}
+        return {getattr(prov_assign, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value) for prov_assign in self.provider_assignments}
 
     def add_provider_assignment(self, provider_assignment):
         self.provider_assignments.add(provider_assignment)
-
-    def has_full_time_provider(self):
-        for provider_assign in self.provider_assignments:
-            if provider_assign.fte == ProviderAtWorksiteDataColumns.FULL_TIME.value:
-                return True
-        return False
 
     def has_child(self, worksite_id):
         if self.worksite_id == worksite_id:

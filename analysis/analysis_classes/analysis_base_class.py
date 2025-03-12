@@ -2,6 +2,8 @@
 from abc import ABC, abstractmethod
 import pandas as pd
 
+from utils.enums import AnalysisFunctionAttributes
+
 
 class Data:
 

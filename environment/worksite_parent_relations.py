@@ -1,6 +1,3 @@
-from column_enums import WorksiteDataColumns
-
-
 class Relationship:
 
     def __init__(self, worksite_id, parent_id):
