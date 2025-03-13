@@ -8,6 +8,7 @@ class WorksiteEnums:
         WORKSITE_ID = 'worksiteid'
         PARENT_ID = 'parentid'
         PRAC_ARR_NAME = 'practicearrname'
+        PROGRAMMED_PRAC_ARR_NAME = 'programmed_prac_arr_name'
 
     class Status(Enum):
         OPEN = 'ACT'

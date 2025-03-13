@@ -10,7 +10,7 @@ class AnalysisClass(ABC):
     def __init__(self):
         pass
 
-    def analyze_environment(self, env: Environment):
+    def analyze_environment(self, years: list[int], env: Environment):
         pass
 
     @property

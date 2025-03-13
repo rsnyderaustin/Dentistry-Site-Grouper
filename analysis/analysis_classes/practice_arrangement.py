@@ -7,6 +7,55 @@ from .analysis_base_class import AnalysisClass
 from utils import OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 from processing import classify
 
+import logging
+
+from utils.enums import ProviderEnums, WorksiteEnums
+from things import Organization, ProviderAssignment, Worksite
+
+
+def _total_worksite_hours(worksite: Worksite):
+    total_hours = 0
+    for assignment in worksite.provider_assignments:
+        total_hours += (getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
+                        *
+                        getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value))
+    return total_hours
+
+
+def _determine_organization_size_classification(organization_assignments, simplify: bool = False):
+    organization_specialties = {
+        getattr(assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
+        for assignment in organization_assignments
+    }
+    specialties_class = 'Single Specialty' if len(organization_specialties) == 1 else 'Multi-Specialty'
+
+    if simplify:
+        if len(organization_assignments) == 1:
+            return 'Solo Practice'
+        elif len(organization_assignments) == 2:
+            return '2 Member Partnership'
+        elif len(organization_assignments) <= 5:
+            return '3 - 5 Member Group'
+        elif len(organization_assignments) <= 8:
+            return '6 - 8 Member Group'
+        elif len(organization_assignments) >= 9:
+            return '9+ Member Group'
+        else:
+            return 'ERROR - NO PROVIDERS?'
+    else:
+        practice_arrangements_by_org_size = {
+            1: 'Solo Practice',
+            2: f'2 Member Partnership / {specialties_class}',
+            3: f'3-4 Member Group / {specialties_class}',
+            4: f'3-4 Member Group / {specialties_class}',
+            5: f'5-6 Member Group / {specialties_class}',
+            6: f'5-6 Member Group / {specialties_class}',
+        }
+        if len(organization_assignments) >= 7:
+            return f'7+ Member Group / {specialties_class}'
+
+    return practice_arrangements_by_org_size[len(organization_assignments)]
+
 
 class Formatter:
 
@@ -21,27 +70,77 @@ class Formatter:
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
-    def format(self, simplify_arrangements: bool = False):
-        for year, orgs in orgs_by_year.items():
-            for org in orgs:
-                classifications = classify(organization=org,
-                                           simplify=simplify_arrangements)
+    def output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement):
+        self.output[ProgramColumns.YEAR.value].append(year)
+        self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
+        self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(assignment.provider, ProviderEnums.Attributes.HCP_ID.value))
+        self.output[ProviderEnums.Attributes.AGE.value].append(getattr(assignment.provider, ProviderEnums.Attributes.AGE.value))
+        self.output[OutputDataColumns.WORKSITE_ID.value].append(getattr(assignment.worksite, WorksiteEnums.Attributes.WORKSITE_ID.value))
+        self.output[OutputDataColumns.CLASSIFICATION.value].append(practice_arrangement),
+        self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id)
 
-                for worksite_id, classification in classifications.items():
-                    worksite = org.worksites_by_id[worksite_id]
-                    providers = {prov_assign.provider for prov_assign in worksite.provider_assignments}
+    def classify(self, organization: Organization, year: int, simplify: bool = False):
+        organization_assignments_obj = organization.fetch_assignments(year=year)
+        assignments_by_worksite = organization_assignments_obj.assignments_by_worksite
+        organization_assignments = {assignment for worksite, assignments in
+                                    organization_assignments_obj.assignments_by_worksite.items()
+                                    for assignment in assignments}
+        worksites = {assignment.worksite for assignment in organization_assignments}
+        providers = {assignment.provider for assignment in organization_assignments}
 
-                    for provider in providers:
-                        self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(provider, ProviderEnums.Attributes.HCP_ID.value))
-                        self.output[ProviderEnums.Attributes.AGE.value].append(getattr(provider, ProviderEnums.Attributes.AGE.value))
-                        self.output[ProgramColumns.YEAR.value].append(year)
-                        self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(org.ultimate_parent_id)
-                        self.output[OutputDataColumns.ORG_SIZE.value].append(org.number_of_dentists)
+        is_corporate = any([getattr(assignment,
+                                    WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.CORPORATE.value
+                            for assignment in organization_assignments])
+        if is_corporate:
+            for assignment in organization_assignments:
+                self.output_data(
+                    assignment=assignment,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.CORPORATE.value
+                )
+            return
 
-                        self.output[OutputDataColumns.WORKSITE_ID.value].append(worksite_id)
-                        self.output[OutputDataColumns.CLASSIFICATION.value].append(classification)
+        is_hospital_sponsored = any([getattr(worksite,
+                                             WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value
+                                     for worksite in worksites])
+        if is_hospital_sponsored:
+            return {worksite: WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value for worksite in
+                    organization.worksites_by_id.values()}
 
-        return pd.DataFrame(self.output)
+        ft_sites = [worksite for worksite in worksites
+                    if any([getattr(assignment,
+                                    ProviderEnums.AssignmentAttributes.FTE.value) == ProviderEnums.Fte.FULL_TIME.value
+                            for assignment in worksite.provider_assignments])]
+
+        if len(ft_sites) >= 2:
+            return {worksite: WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value for worksite in
+                    organization.worksites_by_id.values()}
+
+        # At this point this organization has to be a primary site and a set of satellites
+        satellites = [worksite for worksite in worksites
+                      if getattr(worksite,
+                                 WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.SATELLITE.value]
+        possible_primaries = [worksite for worksite in worksites if worksite not in satellites]
+
+        if not possible_primaries:
+            logging.info(
+                f"Organization with ultimate worksite {organization.ultimate_parent_worksite.worksite_id} and worksites "
+                f"{[w.worksite_id for w in worksites]} has no non-satellites.")
+            return dict()
+
+        primary_worksite = max(
+            possible_primaries,
+            key=lambda w: _total_worksite_hours(worksite=w)
+        )
+        satellites = [worksite for worksite in worksites if worksite != primary_worksite]
+
+        return {
+            primary_worksite: _determine_organization_size_classification(
+                organization_assignments=organization_assignments,
+                simplify=simplify),
+            **{worksite: WorksiteEnums.PracticeArrangements.SATELLITE.value for worksite in satellites}
+        }
 
 
 class PracticeArrangement(AnalysisClass):
@@ -52,7 +151,8 @@ class PracticeArrangement(AnalysisClass):
 
     def analyze_environment(self, years: list[int], env: Environment) -> pd.DataFrame:
         for year, organization in product(years, env.organizations):
-            provider_assignments = organization.fetch_assignments(year=year)
+            classification_by_worksite = classify(organization=organization,
+                                                  year=year)
 
 
 
