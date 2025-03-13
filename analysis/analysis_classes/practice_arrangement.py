@@ -13,9 +13,10 @@ from utils.enums import ProviderEnums, WorksiteEnums
 from things import Organization, ProviderAssignment, Worksite
 
 
-def _total_worksite_hours(worksite: Worksite):
+def _total_worksite_hours(year: int, worksite: Worksite):
     total_hours = 0
-    for assignment in worksite.provider_assignments:
+    provider_assignments = worksite.fetch_provider_assignments(year=year)
+    for assignment in provider_assignments:
         total_hours += (getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
                         *
                         getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value))
@@ -70,7 +71,7 @@ class Formatter:
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
-    def output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement):
+    def _output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement):
         self.output[ProgramColumns.YEAR.value].append(year)
         self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
         self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(assignment.provider, ProviderEnums.Attributes.HCP_ID.value))
@@ -93,8 +94,9 @@ class Formatter:
                             for assignment in organization_assignments])
         if is_corporate:
             for assignment in organization_assignments:
-                self.output_data(
+                self._output_data(
                     assignment=assignment,
+                    year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                     practice_arrangement=WorksiteEnums.PracticeArrangements.CORPORATE.value
@@ -105,8 +107,15 @@ class Formatter:
                                              WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value
                                      for worksite in worksites])
         if is_hospital_sponsored:
-            return {worksite: WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value for worksite in
-                    organization.worksites_by_id.values()}
+            for assignment in organization_assignments:
+                self._output_data(
+                    assignment=assignment,
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value
+                )
+            return
 
         ft_sites = [worksite for worksite in worksites
                     if any([getattr(assignment,
@@ -114,8 +123,15 @@ class Formatter:
                             for assignment in worksite.provider_assignments])]
 
         if len(ft_sites) >= 2:
-            return {worksite: WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value for worksite in
-                    organization.worksites_by_id.values()}
+            for assignment in organization_assignments:
+                self._output_data(
+                    assignment=assignment,
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value
+                )
+            return
 
         # At this point this organization has to be a primary site and a set of satellites
         satellites = [worksite for worksite in worksites
@@ -131,16 +147,34 @@ class Formatter:
 
         primary_worksite = max(
             possible_primaries,
-            key=lambda w: _total_worksite_hours(worksite=w)
+            key=lambda w: _total_worksite_hours(year=year,
+                                                worksite=w)
         )
         satellites = [worksite for worksite in worksites if worksite != primary_worksite]
 
-        return {
-            primary_worksite: _determine_organization_size_classification(
+        primary_assignments = assignments_by_worksite[primary_worksite]
+        primary_practice_arrangement = _determine_organization_size_classification(
                 organization_assignments=organization_assignments,
-                simplify=simplify),
-            **{worksite: WorksiteEnums.PracticeArrangements.SATELLITE.value for worksite in satellites}
-        }
+                simplify=simplify
+        )
+        for assignment in primary_assignments:
+            self._output_data(
+                assignment=assignment,
+                year=year,
+                org_size=len(providers),
+                ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                practice_arrangement=primary_practice_arrangement
+            )
+
+        satellite_assignments = [assignment for satellite in satellites for assignment in assignments_by_worksite[satellite]]
+        for assignment in satellite_assignments:
+            self._output_data(
+                assignment=assignment,
+                year=year,
+                org_size=len(providers),
+                ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
+            )
 
 
 class PracticeArrangement(AnalysisClass):
@@ -149,10 +183,17 @@ class PracticeArrangement(AnalysisClass):
         super().__init__()
         self.simplify = simplify_practice_arrangements
 
-    def analyze_environment(self, years: list[int], env: Environment) -> pd.DataFrame:
+    def analyze_environment(self, years: list[int], env: Environment, simplify: bool = True) -> pd.DataFrame:
+        formatter = Formatter()
         for year, organization in product(years, env.organizations):
-            classification_by_worksite = classify(organization=organization,
-                                                  year=year)
+            formatter.classify(
+                organization=organization,
+                year=year,
+                simplify=simplify
+            )
+
+        df = pd.DataFrame(formatter.output)
+        return df
 
 
 
