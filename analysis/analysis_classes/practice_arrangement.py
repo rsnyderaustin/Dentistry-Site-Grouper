@@ -1,10 +1,11 @@
 
+import configparser
 from itertools import product
 import pandas as pd
 
 from environment import Environment
 from .analysis_base_class import AnalysisClass
-from utils import OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
+from utils import config, OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 from processing import classify
 
 import logging
@@ -80,7 +81,7 @@ class Formatter:
         self.output[OutputDataColumns.CLASSIFICATION.value].append(practice_arrangement),
         self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id)
 
-    def classify(self, organization: Organization, year: int, simplify: bool = False):
+    def classify(self, organization: Organization, year: int):
         organization_assignments_obj = organization.fetch_assignments(year=year)
         assignments_by_worksite = organization_assignments_obj.assignments_by_worksite
         organization_assignments = {assignment for worksite, assignments in
@@ -155,7 +156,7 @@ class Formatter:
         primary_assignments = assignments_by_worksite[primary_worksite]
         primary_practice_arrangement = _determine_organization_size_classification(
                 organization_assignments=organization_assignments,
-                simplify=simplify
+                simplify=config['PracticeArrangement']['simplify']
         )
         for assignment in primary_assignments:
             self._output_data(
@@ -194,10 +195,6 @@ class PracticeArrangement(AnalysisClass):
 
         df = pd.DataFrame(formatter.output)
         return df
-
-
-
-
 
     @property
     def required_columns(self):

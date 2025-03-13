@@ -10,7 +10,6 @@ def apply_create_entities(row,
     year = row[ProgramColumns.YEAR.value]
     hcp_id = row[ProviderEnums.Attributes.HCP_ID.value]
     worksite_id = row[WorksiteEnums.Attributes.WORKSITE_ID.value]
-    parent_id = row[WorksiteEnums.Attributes.PARENT_ID.value]
 
     provider_data = {col_enum.value: row[col_enum.value] for col_enum in required_cols.provider_columns}
     if hcp_id not in providers_by_id:

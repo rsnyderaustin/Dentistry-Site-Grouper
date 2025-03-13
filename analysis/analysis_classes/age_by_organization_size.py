@@ -1,3 +1,4 @@
+"""
 import pandas as pd
 
 from .analysis_base_class import AnalysisClass
@@ -18,7 +19,8 @@ class Formatter:
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
-    def format_prov_assign_by_org_size(self, data: Data):
+    def format_prov_assign_by_org_size(self):
+
         for year, ult_parent_id, org_size, provider_assignment in data.data_generator():
             provider = provider_assignment.provider
             worksite = provider_assignment.worksite
@@ -66,4 +68,4 @@ class AgeByOrgSize(AnalysisClass):
                                        provider_columns=[ProviderEnums.Attributes.AGE.value],
                                        provider_at_worksite_columns=[ProviderEnums.Attributes.PRAC_ARR_NAME.value,
                                                                      ProviderEnums.Attributes.SPECIALTY_NAME.value])
-
+"""

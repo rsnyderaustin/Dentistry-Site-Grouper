@@ -28,7 +28,8 @@ class EnvironmentLoader:
             factories.apply_create_entities,
             required_cols=self.required_cols,
             worksites_by_id=self.worksites_by_id,
-            providers_by_id=self.providers_by_id
+            providers_by_id=self.providers_by_id,
+            axis=1
         )
 
         organizations = factories.create_organizations(

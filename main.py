@@ -11,8 +11,7 @@ prog_manager = program_manager.ProgramManager(
     year_end_path="C:/Users/austisnyder/programming/programming_i_o_files/dds_years_data.csv"
 )
 
-df = prog_manager.analyze(analysis_class=PracticeArrangement(),
-                          simplify_practice_arrangements=False)
+df = prog_manager.analyze(analysis_class=PracticeArrangement())
 
 df.to_csv("C:/Users/austisnyder/programming/programming_i_o_files/practice_arrangements.csv",
           index=False)
