@@ -29,67 +29,34 @@ def create_organizations(worksites_dataframe: pd.DataFrame, worksites_by_id: dic
         worksite_id: Organization(ultimate_parent_worksite=worksites_by_id[worksite_id])
         for worksite_id in ultimate_parent_ids
     }
-    
+    # The dict is just the ultimate parent ID's as keys and the associated Organization as a value, so we can copy it
+    # now to return later
+    organizations_by_ultimate_parent_id = worksite_id_to_organization.copy()
+
+    loop = 0
     while len(unplaced_child_ids) > 0:
+        placed_child_ids = set()
+        logging.info(f"Loop {loop}")
         for worksite_id in unplaced_child_ids:
             parent_id = child_to_parent_ids[worksite_id]
-            if parent_id not in placed_child_ids:
+
+            # Check if we've placed the parent at an organization yet
+            if parent_id not in worksite_id_to_organization:
                 continue
 
-            organization =
+            organization = worksite_id_to_organization[parent_id]
+            organization.add_worksite(
+                worksite=worksites_by_id[worksite_id]
+            )
 
+            worksite_id_to_organization[worksite_id] = organization
+            placed_child_ids.add(worksite_id)
 
-    relationships = [
-        HierarchyRelationship(worksite_id=worksite_id,
-                              parent_id=parent_id)
-        for worksite_id, parent_id in zip(worksite_ids, parent_ids)
-    ]
-    missing_parent_worksites = [parent_id for parent_id in set(parent_ids) if parent_id not in set(worksite_ids)]
+        unplaced_child_ids -= placed_child_ids
+        loop += 1
 
-    hierarchy_relations_manager = HierarchyRelationsManager(relationships=relationships)
+    return organizations_by_ultimate_parent_id
 
-    for relation in self.worksite_parent_relations.relationships:
-
-        if relation.worksite_id not in self.repository.worksites:
-            worksite_rows = worksites_dataframe.query(
-                f"{WorksiteEnums.Attributes.WORKSITE_ID.value} == {relation.worksite_id}")
-            worksite_row = worksite_rows.iloc[0]
-            worksite_data = {col_enum.value: worksite_row[col_enum.value] for col_enum in self.required_cols.worksite_columns}
-            new_worksite = Worksite(worksite_id=relation.worksite_id,
-                                    parent_id=relation.parent_id,
-                                    **worksite_data)
-            self.repository.worksites[relation.worksite_id] = new_worksite
-
-            if relation.parent_id == relation.worksite_id and relation.worksite_id not in self.repository.organizations:
-                new_org = Organization(ult_parent_worksite=new_worksite)
-                self.repository.organizations[relation.worksite_id] = new_org
-    logging.info("Finished filling repository.")
-
-    # Add worksites to organizations
-    non_ult_parent_worksites = set(worksite for worksite in self.repository.worksites.values()
-                                   if worksite.worksite_id != worksite.parent_id)
-    loops = 0
-    while len(non_ult_parent_worksites) > 0:
-        logging.info(f"Loop number {loops}")
-        added_worksites = set()
-        for org in self.repository.organizations.values():
-            for worksite in non_ult_parent_worksites:
-                parent_worksite_id = self.worksite_parent_relations.get_parent_id(worksite.worksite_id)
-                if parent_worksite_id in org.worksites_by_id:
-                    org.add_worksite(worksite=worksite,
-                                     parent=self.repository.worksites[parent_worksite_id])
-                    added_worksites.add(worksite)
-        for worksite in added_worksites:
-            non_ult_parent_worksites.remove(worksite)
-
-        loops += 1
-
-    # Fill worksite_id_to_ultimate_parent_id dict
-    for ult_parent_id, org in self.repository.organizations.items():
-        for worksite in org.worksites_by_id.values():
-            self.worksite_id_to_ultimate_parent_id[worksite.worksite_id] = ult_parent_id
-
-    self.organizations_loaded = True
     
     
     

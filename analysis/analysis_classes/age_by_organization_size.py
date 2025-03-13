@@ -1,8 +1,7 @@
 import pandas as pd
 
-from .analysis_base_class import AnalysisClass, Data
-from utils.enums import AnalysisFunctionAttributes, OutputDataColumns, ProgramColumns, ProviderEnums, WorksiteEnums
-from things import RequiredEntitiesColumns
+from .analysis_base_class import AnalysisClass
+from utils import OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 
 
 class Formatter:
@@ -13,8 +12,8 @@ class Formatter:
             OutputDataColumns.ORG_SIZE.value: [],
             ProviderEnums.Attributes.AGE.value: [],
             ProviderEnums.Attributes.HCP_ID.value: [],
-            ProviderEnums.Attributes.PRAC_ARR_NAME.value: [],
-            ProviderEnums.Attributes.SPECIALTY_NAME.value: [],
+            WorksiteEnums.Attributes.PRAC_ARR_NAME.value: [],
+            ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value: [],
             WorksiteEnums.Attributes.WORKSITE_ID.value: [],
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
@@ -31,11 +30,11 @@ class Formatter:
             self.output[ProviderEnums.Attributes.HCP_ID.value].append(
                 getattr(provider, ProviderEnums.Attributes.HCP_ID.value)
             )
-            self.output[ProviderEnums.Attributes.PRAC_ARR_NAME.value].append(
-                getattr(provider_assignment, ProviderEnums.Attributes.PRAC_ARR_NAME.value)
+            self.output[WorksiteEnums.Attributes.PRAC_ARR_NAME.value].append(
+                getattr(provider_assignment, WorksiteEnums.Attributes.PRAC_ARR_NAME.value)
             )
-            self.output[ProviderEnums.Attributes.SPECIALTY_NAME.value].append(
-                getattr(provider_assignment, ProviderEnums.Attributes.SPECIALTY_NAME.value)
+            self.output[ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value].append(
+                getattr(provider_assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
             )
             self.output[WorksiteEnums.Attributes.WORKSITE_ID.value].append(
                 getattr(worksite, WorksiteEnums.Attributes.WORKSITE_ID.value)
@@ -48,8 +47,6 @@ class AgeByOrgSize(AnalysisClass):
 
     def __init__(self):
         super().__init__()
-
-        self.data = Data()
 
     def process_data(self, environments):
         for environment in environments:

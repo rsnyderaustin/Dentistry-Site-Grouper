@@ -2,7 +2,7 @@
 import logging
 
 from utils.enums import ProviderEnums, WorksiteEnums
-from things import Organization, Worksite
+from things import ProviderAssignment, Worksite
 
 
 def _total_worksite_hours(worksite: Worksite):
@@ -13,20 +13,21 @@ def _total_worksite_hours(worksite: Worksite):
                         getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value))
     return total_hours
 
-def _determine_organization_size_classification(organization: Organization, simplify: bool = False):
-    organization_specialties = {provider_specialty for worksite in organization.worksites_by_id.values() for provider_specialty in worksite.fetch_provider_specialties}
+def _determine_organization_size_classification(organization_assignments: list[ProviderAssignment], simplify: bool = False):
+    organization_specialties = {
+        getattr(assignment, provider_specialty for worksite in organization.worksites_by_id.values() for provider_specialty in worksite.fetch_provider_specialties}
     specialties_class = 'Single Specialty' if len(organization_specialties) == 1 else 'Multi-Specialty'
 
     if simplify:
-        if len(organization.providers) == 1:
+        if len(organization_assignments) == 1:
             return 'Solo Practice'
-        elif len(organization.providers) == 2:
+        elif len(organization_assignments) == 2:
             return '2 Member Partnership'
-        elif len(organization.providers) <= 5:
+        elif len(organization_assignments) <= 5:
             return '3 - 5 Member Group'
-        elif len(organization.providers) <= 8:
+        elif len(organization_assignments) <= 8:
             return '6 - 8 Member Group'
-        elif len(organization.providers) >= 9:
+        elif len(organization_assignments) >= 9:
             return '9+ Member Group'
         else:
             return 'ERROR - NO PROVIDERS?'
@@ -45,10 +46,7 @@ def _determine_organization_size_classification(organization: Organization, simp
     return practice_arrangements_by_org_size[len(organization.providers)]
 
 
-def classify(organization, simplify: bool = False) -> dict:
-    if not organization.worksites:
-        return dict()
-
+def classify(organization, year: int, simplify: bool = False) -> dict:
     is_corporate = any([getattr(worksite, WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.CORPORATE.value
                         for worksite in organization.worksites])
     if is_corporate:

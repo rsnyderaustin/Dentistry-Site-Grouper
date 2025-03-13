@@ -1,10 +1,11 @@
 
+from itertools import product
 import pandas as pd
 
-from .analysis_base_class import AnalysisClass, Data
-from utils.enums import OutputDataColumns, ProgramColumns, ProviderEnums, WorksiteEnums
+from environment import Environment
+from .analysis_base_class import AnalysisClass
+from utils import OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 from processing import classify
-from things import RequiredEntitiesColumns
 
 
 class Formatter:
@@ -20,8 +21,7 @@ class Formatter:
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
-    def format(self, data: Data, simplify_arrangements: bool = False):
-        orgs_by_year = data.organizations_by_year
+    def format(self, simplify_arrangements: bool = False):
         for year, orgs in orgs_by_year.items():
             for org in orgs:
                 classifications = classify(organization=org,
@@ -50,13 +50,13 @@ class PracticeArrangement(AnalysisClass):
         super().__init__()
         self.simplify = simplify_practice_arrangements
 
-        self.data = Data()
+    def analyze_environment(self, years: list[int], env: Environment) -> pd.DataFrame:
+        for year, organization in product(years, env.organizations):
+            provider_assignments = organization.fetch_assignments(year=year)
 
-    def get_dataframe(self):
-        formatter = Formatter()
-        df = formatter.format(data=self.data,
-                              simplify_arrangements=self.simplify)
-        return df
+
+
+
 
     @property
     def required_columns(self):

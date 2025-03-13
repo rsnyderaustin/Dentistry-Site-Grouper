@@ -1,7 +1,7 @@
 
 from .provider_assignment import ProviderAssignment
 from .provider_assignments_tracker import ProviderAssignmentsTracker
-from utils.enums import ProviderEnums, WorksiteEnums
+from utils.enums import WorksiteEnums
 
 
 class Worksite:
@@ -20,9 +20,11 @@ class Worksite:
         self.child_worksites = dict()
         self.provider_assignments_tracker = ProviderAssignmentsTracker()
 
-    def fetch_provider_specialties(self, year: int):
-        provider_assignments = self.provider_assignments_tracker.fetch_assignments(year=year)
-        return {getattr(prov_assign, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value) for prov_assign in provider_assignments}
+    def __hash__(self):
+        return hash(self.worksite_id)
+
+    def fetch_provider_assignments(self, year: int):
+        return self.provider_assignments_tracker.fetch_assignments(year=year)
 
     def add_provider_assignment(self, year: int, provider_assignment: ProviderAssignment):
         self.provider_assignments_tracker.add_assignment(year=year,

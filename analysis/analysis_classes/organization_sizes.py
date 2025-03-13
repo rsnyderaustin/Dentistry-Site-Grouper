@@ -1,9 +1,9 @@
 
 import pandas as pd
 
-from .analysis_base_class import AnalysisClass, Data
-from utils.enums import AnalysisFunctionAttributes, OutputDataColumns, ProgramColumns, ProviderEnums, WorksiteEnums
-from things import RequiredEntitiesColumns
+from .analysis_base_class import AnalysisClass
+from environment import Environment
+from utils import OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 
 
 class Formatter:
@@ -15,7 +15,7 @@ class Formatter:
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
         }
 
-    def format(self, data: Data):
+    def format(self):
         for year, organizations in data.organizations_by_year.items():
             self.output[ProgramColumns.YEAR.value].extend([year for _ in range(len(organizations))])
             for org in organizations:
@@ -29,19 +29,11 @@ class OrganizationSizes(AnalysisClass):
     def __init__(self):
         super().__init__()
 
-        self.data = Data()
-
-    def process_data(self, environments):
-        for environment in environments:
-            for organization in environment.organizations.values():
-                self.data.add_organization(
-                    year=environment.year,
-                    organization=organization)
+    def analyze(self, env: Environment):
+        pass
 
     def get_dataframe(self):
-        formatter = Formatter()
-        df = formatter.format(data=self.data)
-        return df
+        pass
 
     @property
     def required_columns(self):

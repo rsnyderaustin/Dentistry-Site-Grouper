@@ -3,7 +3,7 @@ import pandas as pd
 
 from analysis import AnalysisClass
 from utils.enums import ProgramColumns, WorksiteEnums
-from environment import EnvironmentManager
+from environment import EnvironmentLoader
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,22 +23,19 @@ def dataframe_contains_columns(df: pd.DataFrame, columns):
 class ProgramManager:
 
     def __init__(self, worksites_path: str, year_end_path: str):
-        worksites_df = pd.read_csv(worksites_path)
-        worksites_df.columns = [col.lower().replace(' ', '') for col in worksites_df.columns]
+        self.worksites_df = pd.read_csv(worksites_path)
+        self.worksites_df.columns = [col.lower().replace(' ', '') for col in self.worksites_df.columns]
 
-        year_end_df = pd.read_csv(year_end_path)
-        year_end_df.columns = [col.lower().replace(' ', '') for col in year_end_df.columns]
-
-        self.environment_manager = EnvironmentManager(year_end_df=year_end_df,
-                                                      worksites_df=worksites_df)
-
-        # Worksites are valid if they are originally included in the data, otherwise they are created as empty worksites
-        # to allow the program to function
-        self.valid_worksite_ids_by_year = year_end_df.groupby(ProgramColumns.YEAR.value)[
-            WorksiteEnums.Attributes.WORKSITE_ID.value].unique()
+        self.year_end_df = pd.read_csv(year_end_path)
+        self.year_end_df.columns = [col.lower().replace(' ', '') for col in self.year_end_df.columns]
 
     def analyze(self, analysis_class: AnalysisClass, **kwargs):
-        self.environment_manager.fill_environments(required_cols=analysis_class.required_columns)
+        env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
+                                       year_end_df=self.year_end_df,
+                                       required_cols=analysis_class.required_columns)
+        env = env_loader.load_environment()
+
+        analysis_class.analyze_environment(env=env)
         analysis_class.process_data(environments=self.environment_manager.environments)
         df = analysis_class.get_dataframe()
 
