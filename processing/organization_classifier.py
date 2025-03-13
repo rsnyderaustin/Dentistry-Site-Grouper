@@ -14,7 +14,7 @@ def _total_worksite_hours(worksite: Worksite):
     return total_hours
 
 def _determine_organization_size_classification(organization: Organization, simplify: bool = False):
-    organization_specialties = {provider_specialty for worksite in organization.worksites_by_id.values() for provider_specialty in worksite.provider_specialties}
+    organization_specialties = {provider_specialty for worksite in organization.worksites_by_id.values() for provider_specialty in worksite.fetch_provider_specialties}
     specialties_class = 'Single Specialty' if len(organization_specialties) == 1 else 'Multi-Specialty'
 
     if simplify:

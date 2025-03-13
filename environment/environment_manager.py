@@ -1,7 +1,8 @@
 import pandas as pd
 
+from environment import HierarchyRelationship
 from environment.environment_loader import EnvironmentLoader
-from .worksite_parent_relations import WorksiteParentRelations
+from .hierarchy_relations_manager import HierarchyRelationsManager
 from utils.enums import WorksiteEnums
 import preprocessing
 
@@ -21,20 +22,29 @@ class EnvironmentManager:
             worksites_df[WorksiteEnums.Attributes.WORKSITE_ID.value],
             worksites_df[WorksiteEnums.Attributes.PARENT_ID.value]
         ))
-        self.site_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
+
+        relationships = list(
+            HierarchyRelationship(worksite_id=tup[0],
+                                  parent_id=tup[1])
+            for tup in child_parent_tuples
+        )
+        worksite_ids = set(worksites_df[WorksiteEnums.Attributes.WORKSITE_ID.value])
+        parent_ids = set(worksites_df[WorksiteEnums.Attributes.PARENT_ID.value])
+
+        missing_parent_sites = (parent_id for parent_id in parent_ids if parent_id not in worksite_ids)
+
+
+        self.site_relations = HierarchyRelationsManager(relationships=relationships)
 
         worksite_ids = self.worksites_df[WorksiteEnums.Attributes.WORKSITE_ID.value].unique().tolist()
         self.ultimate_parent_ids = {worksite_id for worksite_id in worksite_ids
                                     if self.site_relations.get_parent_id(worksite_id) == worksite_id}
 
     def fill_environments(self, required_cols):
-        child_parent_tuples = list(zip(self.worksites_df[WorksiteEnums.Attributes.WORKSITE_ID.value],
-                                       self.worksites_df[WorksiteEnums.Attributes.PARENT_ID.value]))
-        worksite_parent_relations = WorksiteParentRelations(child_parent_tuples=child_parent_tuples)
         env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
                                        year_end_df=self.year_end_df,
                                        required_cols=required_cols,
-                                       worksite_parent_relations=worksite_parent_relations)
+                                       worksite_parent_relations=self.site_relations)
 
         for year in self.year_end_dataframes.years:
             new_env = env_loader.load_environment(required_cols=required_cols,

@@ -15,3 +15,6 @@ class ProviderAssignment:
     @property
     def hcp_id(self):
         return getattr(self.provider, ProviderEnums.Attributes.HCP_ID.value)
+
+    def __hash__(self):
+        return hash(self.hcp_id)

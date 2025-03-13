@@ -1,43 +1,47 @@
 import copy
 import logging
+import pandas as pd
 
-from .worksite_parent_relations import WorksiteParentRelations
+import factories
+from .hierarchy_relations_manager import HierarchyRelationsManager
+from .hierarchy_relationship import HierarchyRelationship
 from environment.environment import Environment
-from utils.enums import ProviderEnums, WorksiteEnums
+from utils.enums import ProgramColumns, ProviderEnums, WorksiteEnums
 from things import Organization, Provider, ProviderAssignment, RequiredEntitiesColumns, Worksite
 import preprocessing
 
 
-class Repository:
-
-    def __init__(self):
-        self.worksites = {}
-        self.organizations = {}
-
-
-class CurrentLoad:
-
-    def __init__(self, year_end_df, year, env):
-        self.year_end_df = year_end_df
-        self.year = year
-        self.env = env
-
-
 class EnvironmentLoader:
 
-    def __init__(self, worksites_df, year_end_df, required_cols: RequiredEntitiesColumns,
-                 worksite_parent_relations: WorksiteParentRelations):
+    def __init__(self,
+                 worksites_df,
+                 year_end_df,
+                 required_cols: RequiredEntitiesColumns
+                 ):
         self.worksites_df = worksites_df
-        self.year_end_dataframes = preprocessing.YearEndDataFrames(year_end_df=year_end_df)
+        self.year_end_df = year_end_df
         self.required_cols = required_cols
-        self.worksite_parent_relations = worksite_parent_relations
 
-        self.repository = Repository()
+        self.worksites_by_id = dict()
+        self.providers_by_id = dict()
 
         self.worksite_id_to_ultimate_parent_id = {}
 
         self.organizations_loaded = False
-        self.current_load = None
+
+    def load_environment(self):
+        self.year_end_df.apply(
+            factories.apply_create_entities,
+            required_cols=self.required_cols,
+            worksites_by_id=self.worksites_by_id,
+            providers_by_id=self.providers_by_id
+        )
+
+        organizations = factories.create_organizations(
+            worksites_dataframe=self.worksites_df,
+            worksites_by_id=self.worksites_by_id
+        )
+
 
     def _load_worksite_data(self, worksite_id):
         worksite_rows = self.worksites_df.query(
@@ -49,6 +53,18 @@ class EnvironmentLoader:
     def _load_organizations(self):
         # Fill repository with worksites and organizations
         logging.info("Starting to fill repository with worksites and organizations.")
+
+        worksite_ids = self.worksites_df[WorksiteEnums.Attributes.WORKSITE_ID.value]
+        parent_ids = self.worksites_df[WorksiteEnums.Attributes.PARENT_ID.value]
+
+        relationships = [
+            HierarchyRelationship(worksite_id=worksite_id,
+                                  parent_id=parent_id)
+            for worksite_id, parent_id in zip(worksite_ids, parent_ids)
+        ]
+        missing_parent_worksites = [parent_id for parent_id in set(parent_ids) if parent_id not in set(worksite_ids)]
+
+        hierarchy_relations_manager = HierarchyRelationsManager(relationships=relationships)
 
         for relation in self.worksite_parent_relations.relationships:
 
@@ -68,8 +84,8 @@ class EnvironmentLoader:
         logging.info("Finished filling repository.")
 
         # Add worksites to organizations
-        non_ult_parent_worksites = {worksite for worksite in self.repository.worksites.values()
-                                    if worksite.worksite_id != worksite.parent_id}
+        non_ult_parent_worksites = set(worksite for worksite in self.repository.worksites.values()
+                                       if worksite.worksite_id != worksite.parent_id)
         loops = 0
         while len(non_ult_parent_worksites) > 0:
             logging.info(f"Loop number {loops}")
@@ -93,10 +109,13 @@ class EnvironmentLoader:
 
         self.organizations_loaded = True
 
-    def _apply_create_entities(self, row, required_cols: RequiredEntitiesColumns):
+    def _apply_create_entities(self, row, required_cols: RequiredEntitiesColumns, entities):
+        year = row[ProgramColumns.YEAR.value]
         hcp_id = row[ProviderEnums.Attributes.HCP_ID.value]
         worksite_id = row[WorksiteEnums.Attributes.WORKSITE_ID.value]
-        ult_parent_id = self.worksite_id_to_ultimate_parent_id[worksite_id]
+        parent_id = row[WorksiteEnums.Attributes.PARENT_ID.value]
+
+
 
         organization = self.current_load.env.organizations.get(
             ult_parent_id, copy.deepcopy(self.repository.organizations[ult_parent_id])
@@ -131,13 +150,6 @@ class EnvironmentLoader:
                                              provider_assignment=prov_assign)
 
     def load_environment(self, required_cols: RequiredEntitiesColumns, year):
-        if not self.organizations_loaded:
-            self._load_organizations()
+        organizations = self._load_organizations()
+        self.year_end_df.apply(self._apply_create_entities, required_cols=required_cols, axis=1)
 
-        self.current_load = CurrentLoad(year_end_df=self.year_end_dataframes.get_dataframe(year),
-                                        year=year,
-                                        env=Environment(year=year))
-
-        self.current_load.year_end_df.apply(self._apply_create_entities, required_cols=required_cols, axis=1)
-
-        return self.current_load.env
