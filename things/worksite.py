@@ -15,7 +15,6 @@ class Worksite:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-        self.child_worksites = dict()
         self.provider_assignments_tracker = ProviderAssignmentsTracker()
 
     def __hash__(self):

@@ -16,29 +16,30 @@ def _total_worksite_hours(year: int, worksite: Worksite):
     total_hours = 0
     provider_assignments = worksite.fetch_provider_assignments(year=year)
     for assignment in provider_assignments:
-        total_hours += (getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
+        total_hours += (assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
                         *
-                        getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value))
+                        assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value])
     return total_hours
 
 
 def _determine_organization_size_classification(organization_assignments, simplify: bool = False):
     organization_specialties = {
-        getattr(assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
+        assignment.assignment_data[ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value]
         for assignment in organization_assignments
     }
+    number_of_providers = len(set(assignment.provider for assignment in organization_assignments))
     specialties_class = 'Single Specialty' if len(organization_specialties) == 1 else 'Multi-Specialty'
 
     if simplify:
-        if len(organization_assignments) == 1:
+        if number_of_providers == 1:
             return 'Solo Practice'
-        elif len(organization_assignments) == 2:
+        elif number_of_providers == 2:
             return '2 Member Partnership'
-        elif len(organization_assignments) <= 5:
+        elif number_of_providers <= 5:
             return '3 - 5 Member Group'
-        elif len(organization_assignments) <= 8:
+        elif number_of_providers <= 8:
             return '6 - 8 Member Group'
-        elif len(organization_assignments) >= 9:
+        elif number_of_providers >= 9:
             return '9+ Member Group'
         else:
             return 'ERROR - NO PROVIDERS?'
@@ -86,7 +87,7 @@ class Formatter:
             return
         providers = {assignment.provider for assignment in organization_assignments}
 
-        is_corporate = any([getattr(assignment,
+        is_corporate = any([getattr(assignment.worksite,
                                     WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.CORPORATE.value
                             for assignment in organization_assignments])
         if is_corporate:
@@ -115,8 +116,7 @@ class Formatter:
             return
 
         ft_sites = [worksite for worksite in worksites
-                    if any([getattr(assignment,
-                                    ProviderEnums.AssignmentAttributes.FTE.value) == ProviderEnums.Fte.FULL_TIME.value
+                    if any([assignment.assignment_data[ProviderEnums.AssignmentAttributes.FTE.value] == ProviderEnums.Fte.FULL_TIME.value
                             for assignment in worksite.fetch_provider_assignments(year=year)])]
 
         if len(ft_sites) >= 2:
@@ -130,12 +130,22 @@ class Formatter:
                 )
             return
 
-        primary_worksite = max(
-            worksites,
-            key=lambda w: _total_worksite_hours(year=year,
-                                                worksite=w)
-        )
-        primary_assignments = [assignment for assignment in organization_assignments if assignment.worksite == primary_worksite]
+        # The primary worksite is the Ultimate Parent Worksite if the Ultimate Parent has providers for this year,
+        # otherwise it's the Worksite with the most hours worked for this year
+        ultimate_parent_assignments = organization.ultimate_parent_worksite.fetch_provider_assignments(year=year)
+        if ultimate_parent_assignments:
+            primary_worksite = organization.ultimate_parent_worksite
+        else:
+            primary_worksite = max(
+                worksites,
+                key=lambda w: _total_worksite_hours(year=year,
+                                                    worksite=w)
+            )
+
+        primary_assignments = primary_worksite.fetch_provider_assignments(year=year)
+        satellite_assignments = [assignment for assignment in organization_assignments if
+                                 assignment.worksite != primary_worksite]
+
         primary_practice_arrangement = _determine_organization_size_classification(
                 organization_assignments=organization_assignments,
                 simplify=config.getboolean('PracticeArrangement', 'simplify')
@@ -149,7 +159,6 @@ class Formatter:
                 practice_arrangement=primary_practice_arrangement
             )
 
-        satellite_assignments = [assignment for assignment in organization_assignments if assignment.worksite != primary_worksite]
         for assignment in satellite_assignments:
             self._output_data(
                 assignment=assignment,

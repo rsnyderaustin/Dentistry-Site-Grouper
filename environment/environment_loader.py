@@ -42,9 +42,7 @@ def _apply_create_providers(row,
     provider_assignment = ProviderAssignment(
         worksite=worksite,
         provider=provider,
-        **provider_data,
-        **worksite.__dict__,
-        **assignment_data
+        assignment_data=assignment_data
     )
 
     provider.add_assignment(
