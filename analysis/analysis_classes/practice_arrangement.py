@@ -1,17 +1,15 @@
 
 import configparser
 from itertools import product
+import logging
 import pandas as pd
 
 from environment import Environment
 from .analysis_base_class import AnalysisClass
+from things import Organization, ProviderAssignment, Worksite
 from utils import config, OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
-from processing import classify
 
 import logging
-
-from utils.enums import ProviderEnums, WorksiteEnums
-from things import Organization, ProviderAssignment, Worksite
 
 
 def _total_worksite_hours(year: int, worksite: Worksite):
@@ -82,12 +80,10 @@ class Formatter:
         self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id)
 
     def classify(self, organization: Organization, year: int):
-        organization_assignments_obj = organization.fetch_assignments(year=year)
-        assignments_by_worksite = organization_assignments_obj.assignments_by_worksite
-        organization_assignments = {assignment for worksite, assignments in
-                                    organization_assignments_obj.assignments_by_worksite.items()
-                                    for assignment in assignments}
+        organization_assignments = organization.fetch_provider_assignments(year=year)
         worksites = {assignment.worksite for assignment in organization_assignments}
+        if not worksites:
+            return
         providers = {assignment.provider for assignment in organization_assignments}
 
         is_corporate = any([getattr(assignment,
@@ -121,7 +117,7 @@ class Formatter:
         ft_sites = [worksite for worksite in worksites
                     if any([getattr(assignment,
                                     ProviderEnums.AssignmentAttributes.FTE.value) == ProviderEnums.Fte.FULL_TIME.value
-                            for assignment in worksite.provider_assignments])]
+                            for assignment in worksite.fetch_provider_assignments(year=year)])]
 
         if len(ft_sites) >= 2:
             for assignment in organization_assignments:
@@ -134,29 +130,15 @@ class Formatter:
                 )
             return
 
-        # At this point this organization has to be a primary site and a set of satellites
-        satellites = [worksite for worksite in worksites
-                      if getattr(worksite,
-                                 WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.SATELLITE.value]
-        possible_primaries = [worksite for worksite in worksites if worksite not in satellites]
-
-        if not possible_primaries:
-            logging.info(
-                f"Organization with ultimate worksite {organization.ultimate_parent_worksite.worksite_id} and worksites "
-                f"{[w.worksite_id for w in worksites]} has no non-satellites.")
-            return dict()
-
         primary_worksite = max(
-            possible_primaries,
+            worksites,
             key=lambda w: _total_worksite_hours(year=year,
                                                 worksite=w)
         )
-        satellites = [worksite for worksite in worksites if worksite != primary_worksite]
-
-        primary_assignments = assignments_by_worksite[primary_worksite]
+        primary_assignments = [assignment for assignment in organization_assignments if assignment.worksite == primary_worksite]
         primary_practice_arrangement = _determine_organization_size_classification(
                 organization_assignments=organization_assignments,
-                simplify=config['PracticeArrangement']['simplify']
+                simplify=config.getboolean('PracticeArrangement', 'simplify')
         )
         for assignment in primary_assignments:
             self._output_data(
@@ -167,7 +149,7 @@ class Formatter:
                 practice_arrangement=primary_practice_arrangement
             )
 
-        satellite_assignments = [assignment for satellite in satellites for assignment in assignments_by_worksite[satellite]]
+        satellite_assignments = [assignment for assignment in organization_assignments if assignment.worksite != primary_worksite]
         for assignment in satellite_assignments:
             self._output_data(
                 assignment=assignment,
@@ -186,11 +168,11 @@ class PracticeArrangement(AnalysisClass):
 
     def analyze_environment(self, years: list[int], env: Environment, simplify: bool = True) -> pd.DataFrame:
         formatter = Formatter()
+
         for year, organization in product(years, env.organizations):
             formatter.classify(
                 organization=organization,
-                year=year,
-                simplify=simplify
+                year=year
             )
 
         df = pd.DataFrame(formatter.output)

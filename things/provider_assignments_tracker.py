@@ -13,5 +13,8 @@ class ProviderAssignmentsTracker:
 
         self.assignments_by_year[year].append(assignment)
 
-    def fetch_assignments(self, year: int):
-        return self.assignments_by_year[year] if year in self.assignments_by_year else []
+    def fetch_assignments(self, year: int = None):
+        if year:
+            return self.assignments_by_year[year] if year in self.assignments_by_year else []
+        else:
+            return [assignment for year, assignments in self.assignments_by_year.items() for assignment in assignments]

@@ -13,6 +13,9 @@ class Provider:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def add_assignment(self, year: int, assignment):
+        self.assignments_tracker.add_assignment(year=year, assignment=assignment)
+
     def fetch_assignments(self, year: int, worksite_ids=None):
         assignments = self.assignments_tracker.fetch_assignments(year=year)
 

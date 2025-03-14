@@ -36,16 +36,8 @@ class ProgramManager:
         env = env_loader.load_environment()
 
         years = list(self.year_end_df[ProgramColumns.YEAR.value].unique())
+
         df = analysis_class.analyze_environment(env=env,
                                                 years=years)
 
-        # If these columns are not included in the dataframe then we aren't doing analysis that requires filtering
-        if dataframe_contains_columns(df=df,
-                                      columns=[ProgramColumns.YEAR.value, WorksiteEnums.Attributes.WORKSITE_ID.value]):
-            df = df[df.apply(
-                lambda row: row[ProgramColumns.YEAR.value] in self.valid_worksite_ids_by_year
-                            and row[WorksiteEnums.Attributes.WORKSITE_ID.value] in self.valid_worksite_ids_by_year[
-                                row[ProgramColumns.YEAR.value]],
-                axis=1
-            )]
         return df
