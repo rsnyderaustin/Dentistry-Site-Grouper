@@ -12,14 +12,68 @@ from utils import config, OutputDataColumns, ProgramColumns, ProviderEnums, Requ
 import logging
 
 
-def _total_worksite_hours(year: int, worksite: Worksite):
+class WeirdFteTable:
+
+    table = {
+        4: 5,
+        5: 7,
+        6: 8,
+        7: 9,
+        8: 10,
+        9: 12,
+        10: 13,
+        11: 14,
+        12: 16,
+        13: 17,
+        14: 18,
+        15: 20,
+        16: 21,
+        17: 22,
+        18: 23,
+        19: 25,
+        21: 27,
+        22: 29,
+        23: 30,
+        24: 31,
+        25: 33,
+        26: 34,
+        27: 35,
+        28: 26,
+        29: 38,
+        30: 39,
+        31: 40,
+        32: 42,
+        33: 43,
+        34: 44,
+        35: 46,
+        36: 47,
+        37: 48,
+        38: 49,
+        39: 51
+    }
+
+    @classmethod
+    def convert_assignment_hours(cls, assignment: ProviderAssignment):
+        hours = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
+        weeks = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value]
+
+        if weeks == cls.table[hours]:
+            return hours, 52
+        else:
+            return hours, weeks
+
+
+full_time_hours = 8 * 52
+
+
+def _determine_worksite_status(year: int, worksite: Worksite):
     total_hours = 0
     provider_assignments = worksite.fetch_provider_assignments(year=year)
     for assignment in provider_assignments:
         total_hours += (assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
                         *
                         assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value])
-    return total_hours
+
 
 
 def _determine_organization_size_classification(organization_assignments, simplify: bool = False):
@@ -116,6 +170,14 @@ class Formatter:
             return
 
         worksite_ids = [worksite.worksite_id for worksite in worksites]
+
+        signs = dict()
+        for assignment in organization_assignments:
+            if assignment.worksite not in signs:
+                signs[assignment.worksite] = list()
+
+        worksite_hour_totals = {worksite: _total_worksite_hours(year=year, worksite=worksite) for worksite in worksites}
+
         ft_sites = [worksite for worksite in worksites
                     if any([assignment.assignment_data[ProviderEnums.AssignmentAttributes.FTE.value] == ProviderEnums.Fte.FULL_TIME.value
                             for assignment in worksite.fetch_provider_assignments(year=year)])]
