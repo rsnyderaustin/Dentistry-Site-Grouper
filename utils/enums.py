@@ -33,6 +33,7 @@ class ProviderEnums:
         SPECIALTY_NAME = 'specialtyname'
         WK_WEEKS = 'wkweeks'
         WK_HOURS = 'wkhours'
+        WORKSITE_TYPE = 'worksitetype'
 
     class Fte(Enum):
         FULL_TIME = 'FT'

@@ -98,11 +98,6 @@ def _create_organizations(worksites_dataframe: pd.DataFrame, worksites_by_id: di
         logging.info(f"Loop {loop}")
         for worksite_id in unplaced_child_ids:
             worksite = worksites_by_id[worksite_id]
-            # If there is a child worksite with no provider history, then just skip it and add it to placed_child_ids to be removed
-            # from the list of ID's
-            if not worksite.fetch_provider_assignments():
-                placed_child_ids.add(worksite_id)
-                continue
 
             parent_id = child_to_parent_ids[worksite_id]
 
@@ -111,9 +106,12 @@ def _create_organizations(worksites_dataframe: pd.DataFrame, worksites_by_id: di
                 continue
 
             organization = worksite_id_to_organization[parent_id]
-            organization.add_worksite(
-                worksite=worksites_by_id[worksite_id]
-            )
+
+            # We only add the worksite to the organization if it actually has providers
+            if worksite.fetch_provider_assignments():
+                organization.add_worksite(
+                    worksite=worksites_by_id[worksite_id]
+                )
 
             worksite_id_to_organization[worksite_id] = organization
             placed_child_ids.add(worksite_id)

@@ -64,7 +64,7 @@ class WeirdFteTable:
         hours = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
         weeks = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value]
 
-        if weeks == cls.table[hours]:
+        if hours in cls.table and weeks == cls.table[hours]:
             return HoursWeeks(hours=hours, weeks=52)
         else:
             return HoursWeeks(hours=hours, weeks=weeks)
@@ -129,17 +129,20 @@ class Formatter:
             ProviderEnums.Attributes.AGE.value: [],
             OutputDataColumns.WORKSITE_ID.value: [],
             OutputDataColumns.CLASSIFICATION.value: [],
-            WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: []
+            WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: [],
+            ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value: []
         }
 
-    def _output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement):
+    def _output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement,
+                     worksite_type: str):
         self.output[ProgramColumns.YEAR.value].append(year)
         self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
         self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(assignment.provider, ProviderEnums.Attributes.HCP_ID.value))
         self.output[ProviderEnums.Attributes.AGE.value].append(getattr(assignment.provider, ProviderEnums.Attributes.AGE.value))
         self.output[OutputDataColumns.WORKSITE_ID.value].append(getattr(assignment.worksite, WorksiteEnums.Attributes.WORKSITE_ID.value))
         self.output[OutputDataColumns.CLASSIFICATION.value].append(practice_arrangement),
-        self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id)
+        self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id),
+        self.output[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value].append(worksite_type)
 
     def classify(self, organization: Organization, year: int):
         organization_assignments = organization.fetch_provider_assignments(year=year)
@@ -158,7 +161,8 @@ class Formatter:
                     year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.CORPORATE.value
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.CORPORATE.value,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
                 )
             return
 
@@ -172,14 +176,15 @@ class Formatter:
                     year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
                 )
             return
 
         # We do greater or equal to 27 here because there's so much variability in what was considered "all year"
         # during data entry throughout the years. For instance, some people put 48 weeks as "all year" to account for vacation
         weekly_assignments = {assignment for assignment in organization_assignments
-                            if WeirdFteTable.convert_assignment_hours(assignment).weeks >= 27}
+                              if WeirdFteTable.convert_assignment_hours(assignment).weeks >= 27}
         weekly_worksites = {assignment.worksite for assignment in weekly_assignments}
         non_weekly_assignments = {assignment for assignment in organization_assignments if assignment not in weekly_assignments}
 
@@ -190,13 +195,15 @@ class Formatter:
                 organization_assignments=organization_assignments,
                 simplify=config.getboolean('PracticeArrangement', 'simplify')
             )
-            self._output_data(
-                assignment=next(iter(weekly_assignments)),
-                year=year,
-                org_size=len(providers),
-                ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                practice_arrangement=primary_practice_arrangement
-            )
+            for assignment in weekly_assignments:
+                self._output_data(
+                    assignment=assignment,
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=primary_practice_arrangement,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
+                )
 
             # Satellites
             for assignment in non_weekly_assignments:
@@ -205,34 +212,42 @@ class Formatter:
                     year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
                 )
+
+            return
         # Multi-site dental group
         else:
             for assignment in weekly_assignments:
                 self._output_data(
-                    assignment=next(iter(weekly_assignments)),
+                    assignment=assignment,
                     year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
                 )
 
             for assignment in non_weekly_assignments:
                 self._output_data(
-                    assignment=next(iter(weekly_assignments)),
+                    assignment=assignment,
                     year=year,
                     org_size=len(providers),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value,
+                    worksite_type=assignment.assignment_data[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
                 )
-                
+
+            return
+
+        raise RuntimeError(f"No classification done for organization with worksites {worksites}")
+
 
 class PracticeArrangement(AnalysisClass):
 
-    def __init__(self, simplify_practice_arrangements: bool = False):
+    def __init__(self):
         super().__init__()
-        self.simplify = simplify_practice_arrangements
 
     def analyze_environment(self, years: list[int], env: Environment, simplify: bool = True) -> pd.DataFrame:
         formatter = Formatter()
@@ -254,6 +269,7 @@ class PracticeArrangement(AnalysisClass):
                                        provider_at_worksite_columns=[ProviderEnums.AssignmentAttributes.FTE,
                                                                      ProviderEnums.AssignmentAttributes.WK_WEEKS,
                                                                      ProviderEnums.AssignmentAttributes.WK_HOURS,
-                                                                     ProviderEnums.AssignmentAttributes.SPECIALTY_NAME]
+                                                                     ProviderEnums.AssignmentAttributes.SPECIALTY_NAME,
+                                                                     ProviderEnums.AssignmentAttributes.WORKSITE_TYPE]
                                        )
 
