@@ -115,6 +115,7 @@ class Formatter:
                 )
             return
 
+        worksite_ids = [worksite.worksite_id for worksite in worksites]
         ft_sites = [worksite for worksite in worksites
                     if any([assignment.assignment_data[ProviderEnums.AssignmentAttributes.FTE.value] == ProviderEnums.Fte.FULL_TIME.value
                             for assignment in worksite.fetch_provider_assignments(year=year)])]
