@@ -1,5 +1,6 @@
 
 import configparser
+from dataclasses import dataclass
 from itertools import product
 import logging
 import pandas as pd
@@ -10,6 +11,12 @@ from things import Organization, ProviderAssignment, Worksite
 from utils import config, OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 
 import logging
+
+
+@dataclass
+class HoursWeeks:
+    hours: int
+    weeks: int
 
 
 class WeirdFteTable:
@@ -58,9 +65,9 @@ class WeirdFteTable:
         weeks = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value]
 
         if weeks == cls.table[hours]:
-            return hours, 52
+            return HoursWeeks(hours=hours, weeks=52)
         else:
-            return hours, weeks
+            return HoursWeeks(hours=hours, weeks=weeks)
 
 
 full_time_hours = 8 * 52
@@ -169,68 +176,57 @@ class Formatter:
                 )
             return
 
-        worksite_ids = [worksite.worksite_id for worksite in worksites]
+        # We do greater or equal to 27 here because there's so much variability in what was considered "all year"
+        # during data entry throughout the years. For instance, some people put 48 weeks as "all year" to account for vacation
+        weekly_assignments = {assignment for assignment in organization_assignments
+                            if WeirdFteTable.convert_assignment_hours(assignment).weeks >= 27}
+        weekly_worksites = {assignment.worksite for assignment in weekly_assignments}
+        non_weekly_assignments = {assignment for assignment in organization_assignments if assignment not in weekly_assignments}
 
-        signs = dict()
-        for assignment in organization_assignments:
-            if assignment.worksite not in signs:
-                signs[assignment.worksite] = list()
-
-        worksite_hour_totals = {worksite: _total_worksite_hours(year=year, worksite=worksite) for worksite in worksites}
-
-        ft_sites = [worksite for worksite in worksites
-                    if any([assignment.assignment_data[ProviderEnums.AssignmentAttributes.FTE.value] == ProviderEnums.Fte.FULL_TIME.value
-                            for assignment in worksite.fetch_provider_assignments(year=year)])]
-
-        if len(ft_sites) >= 2:
-            for assignment in organization_assignments:
-                self._output_data(
-                    assignment=assignment,
-                    year=year,
-                    org_size=len(providers),
-                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                    practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value
-                )
-            return
-
-        # The primary worksite is the Ultimate Parent Worksite if the Ultimate Parent has providers for this year,
-        # otherwise it's the Worksite with the most hours worked for this year
-        ultimate_parent_assignments = organization.ultimate_parent_worksite.fetch_provider_assignments(year=year)
-        if ultimate_parent_assignments:
-            primary_worksite = organization.ultimate_parent_worksite
-        else:
-            primary_worksite = max(
-                worksites,
-                key=lambda w: _total_worksite_hours(year=year,
-                                                    worksite=w)
-            )
-
-        primary_assignments = primary_worksite.fetch_provider_assignments(year=year)
-        satellite_assignments = [assignment for assignment in organization_assignments if
-                                 assignment.worksite != primary_worksite]
-
-        primary_practice_arrangement = _determine_organization_size_classification(
+        # Member, partnership, etc (non-multi site dental group)
+        if len(weekly_worksites) == 1:
+            # Primary location
+            primary_practice_arrangement = _determine_organization_size_classification(
                 organization_assignments=organization_assignments,
                 simplify=config.getboolean('PracticeArrangement', 'simplify')
-        )
-        for assignment in primary_assignments:
+            )
             self._output_data(
-                assignment=assignment,
+                assignment=next(iter(weekly_assignments)),
                 year=year,
                 org_size=len(providers),
                 ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                 practice_arrangement=primary_practice_arrangement
             )
 
-        for assignment in satellite_assignments:
-            self._output_data(
-                assignment=assignment,
-                year=year,
-                org_size=len(providers),
-                ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
-                practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
-            )
+            # Satellites
+            for assignment in non_weekly_assignments:
+                self._output_data(
+                    assignment=assignment,
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
+                )
+        # Multi-site dental group
+        else:
+            for assignment in weekly_assignments:
+                self._output_data(
+                    assignment=next(iter(weekly_assignments)),
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value
+                )
 
+            for assignment in non_weekly_assignments:
+                self._output_data(
+                    assignment=next(iter(weekly_assignments)),
+                    year=year,
+                    org_size=len(providers),
+                    ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
+                    practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value
+                )
+                
 
 class PracticeArrangement(AnalysisClass):
 
