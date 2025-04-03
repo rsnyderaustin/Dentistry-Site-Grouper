@@ -29,6 +29,7 @@ class ProviderEnums:
         AGE = 'age'
 
     class AssignmentAttributes(Enum):
+        ACTIVITY = 'activity'
         FTE = 'fte'
         SPECIALTY_NAME = 'specialtyname'
         WK_WEEKS = 'wkweeks'

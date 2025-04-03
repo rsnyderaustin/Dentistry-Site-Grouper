@@ -5,72 +5,13 @@ from itertools import product
 import logging
 import pandas as pd
 
+from .classify_provider_fte import ProviderFteClassifier
 from environment import Environment
-from .analysis_base_class import AnalysisClass
+from analysis.analysis_classes.analysis_base_class import AnalysisClass
 from things import Organization, ProviderAssignment, Worksite
 from utils import config, OutputDataColumns, ProgramColumns, ProviderEnums, RequiredEntitiesColumns, WorksiteEnums
 
 import logging
-
-
-@dataclass
-class HoursWeeks:
-    hours: int
-    weeks: int
-
-
-class WeirdFteTable:
-
-    table = {
-        4: 5,
-        5: 7,
-        6: 8,
-        7: 9,
-        8: 10,
-        9: 12,
-        10: 13,
-        11: 14,
-        12: 16,
-        13: 17,
-        14: 18,
-        15: 20,
-        16: 21,
-        17: 22,
-        18: 23,
-        19: 25,
-        21: 27,
-        22: 29,
-        23: 30,
-        24: 31,
-        25: 33,
-        26: 34,
-        27: 35,
-        28: 26,
-        29: 38,
-        30: 39,
-        31: 40,
-        32: 42,
-        33: 43,
-        34: 44,
-        35: 46,
-        36: 47,
-        37: 48,
-        38: 49,
-        39: 51
-    }
-
-    @classmethod
-    def convert_assignment_hours(cls, assignment: ProviderAssignment):
-        hours = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
-        weeks = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value]
-
-        if hours in cls.table and weeks == cls.table[hours]:
-            return HoursWeeks(hours=hours, weeks=52)
-        else:
-            return HoursWeeks(hours=hours, weeks=weeks)
-
-
-full_time_hours = 8 * 52
 
 
 def _determine_worksite_status(year: int, worksite: Worksite):
@@ -129,24 +70,28 @@ class Formatter:
             ProviderEnums.Attributes.AGE.value: [],
             OutputDataColumns.WORKSITE_ID.value: [],
             OutputDataColumns.CLASSIFICATION.value: [],
+            ProviderEnums.AssignmentAttributes.ACTIVITY.value: [],
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: [],
             ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value: []
         }
 
-    def _output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int, practice_arrangement,
-                     worksite_type: str):
+    def _output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int,
+                     practice_arrangement, worksite_type: str):
         self.output[ProgramColumns.YEAR.value].append(year)
         self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
         self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(assignment.provider, ProviderEnums.Attributes.HCP_ID.value))
         self.output[ProviderEnums.Attributes.AGE.value].append(getattr(assignment.provider, ProviderEnums.Attributes.AGE.value))
         self.output[OutputDataColumns.WORKSITE_ID.value].append(getattr(assignment.worksite, WorksiteEnums.Attributes.WORKSITE_ID.value))
         self.output[OutputDataColumns.CLASSIFICATION.value].append(practice_arrangement),
+        self.output[ProviderEnums.AssignmentAttributes.ACTIVITY.value].append(getattr(assignment, ProviderEnums.AssignmentAttributes.ACTIVITY.value)),
         self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id),
         self.output[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value].append(worksite_type)
 
     def classify(self, organization: Organization, year: int):
         organization_assignments = organization.fetch_provider_assignments(year=year)
         worksites = {assignment.worksite for assignment in organization_assignments}
+        if any([worksite.worksite_id == 161699 for worksite in worksites]):
+            x=0
         if not worksites:
             return
         providers = {assignment.provider for assignment in organization_assignments}
@@ -154,6 +99,7 @@ class Formatter:
         is_corporate = any([getattr(assignment.worksite,
                                     WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.CORPORATE.value
                             for assignment in organization_assignments])
+
         if is_corporate:
             for assignment in organization_assignments:
                 self._output_data(
@@ -184,7 +130,7 @@ class Formatter:
         # We do greater or equal to 27 here because there's so much variability in what was considered "all year"
         # during data entry throughout the years. For instance, some people put 48 weeks as "all year" to account for vacation
         weekly_assignments = {assignment for assignment in organization_assignments
-                              if WeirdFteTable.convert_assignment_hours(assignment).weeks >= 27}
+                              if ProviderFteClassifier.provider_is_weekly(assignment)}
         weekly_worksites = {assignment.worksite for assignment in weekly_assignments}
         non_weekly_assignments = {assignment for assignment in organization_assignments if assignment not in weekly_assignments}
 
@@ -258,6 +204,8 @@ class PracticeArrangement(AnalysisClass):
                 year=year
             )
 
+        logging.info(f"There are {len(set(formatter.output[ProviderEnums.Attributes.HCP_ID.value]))} distinct provider ID's in the output data.")
+        logging.info(f"There are {len(set(formatter.output[WorksiteEnums.Attributes.WORKSITE_ID.value]))} distinct worksite ID's in the output data.")
         df = pd.DataFrame(formatter.output)
         return df
 

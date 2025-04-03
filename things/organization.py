@@ -27,7 +27,7 @@ class Organization:
         self.worksites_by_id[worksite.worksite_id] = worksite
 
     def fetch_provider_assignments(self, year: int = None) -> list:
-        return [assignment for worksite in self.worksites_by_id.values() for assignment in worksite.fetch_provider_assignments(year=year)]
+        return [assignment for worksite in self.worksites for assignment in worksite.fetch_provider_assignments(year=year)]
 
 
 
