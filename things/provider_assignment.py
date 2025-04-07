@@ -1,3 +1,4 @@
+from utils import WorksiteEnums, ProviderEnums
 
 
 class ProviderAssignment:
@@ -5,8 +6,10 @@ class ProviderAssignment:
     def __init__(self, worksite, provider, assignment_data: dict, worksite_type: str, activity: str, fte: str):
         self.worksite = worksite
         self.provider = provider
-        self.assignment_data = assignment_data
-        self.worksite_type = worksite_type
-        self.activity = activity
-        self.fte = fte
 
+        for k, v in assignment_data.items():
+            setattr(self, k, v)
+
+        setattr(self, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value, worksite_type)
+        setattr(self, ProviderEnums.AssignmentAttributes.ACTIVITY.value, activity)
+        setattr(self, ProviderEnums.AssignmentAttributes.FTE.value, fte)

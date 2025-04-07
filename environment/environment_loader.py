@@ -163,17 +163,17 @@ class EnvironmentLoader:
             worksites_dataframe=self.worksites_df
         )
 
-        num_unfiltered_organizations = len(self.env.organizations_by_id.keys())
-
-        org_s = self.env.organizations_by_id[161699]
         # Filter organizations to only those with at least one provider in history
         organization_ids_to_filter = [org.ultimate_parent_worksite.worksite_id for org in self.env.organizations_by_id.values() if not org.fetch_provider_assignments()]
-        logging.info(f"161699 in filter orgs: {161699 in organization_ids_to_filter}")
         for org_id in organization_ids_to_filter:
             del self.env.organizations_by_id[org_id]
 
-        num_filtered_organizations = len(self.env.organizations_by_id.keys())
-        logging.info(f"Filtered out {len(organization_ids_to_filter)} organizations that did not have any provider history out of "
-                     f"{num_unfiltered_organizations} total organizations.")
+        num_worksites_filtered = sum(
+            len(org.worksites)
+            for org in self.env.organizations_by_id.values()
+            if org.ultimate_parent_worksite_id in self.env.organizations_by_id
+        )
+        logging.info(f"Filtered out {len(organization_ids_to_filter)} organizations ({num_worksites_filtered} worksites) that did not have any provider history out of "
+                     f"{len(self.env.organizations_by_id.keys())} total organizations.")
 
         return self.env

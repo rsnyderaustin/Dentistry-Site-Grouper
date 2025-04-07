@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 
 from analysis import AnalysisClass
-from utils.enums import ProgramColumns, WorksiteEnums
+from utils.enums import ProgramColumns, WorksiteEnums, ProviderEnums
 from environment import EnvironmentLoader
 
 logging.basicConfig(level=logging.INFO)
@@ -39,5 +39,23 @@ class ProgramManager:
 
         df = analysis_class.analyze_environment(env=env,
                                                 years=years)
+
+        source_hcp_ids = set(self.year_end_df[ProviderEnums.Attributes.HCP_ID.value])
+        output_hcp_ids = set(df[ProviderEnums.Attributes.HCP_ID.value])
+
+        source_worksite_ids = set(self.year_end_df[WorksiteEnums.Attributes.WORKSITE_ID.value])
+        output_worksite_ids = set(df[WorksiteEnums.Attributes.WORKSITE_ID.value])
+
+        missing_provider_ids = {
+            hcp_id for hcp_id in source_hcp_ids if hcp_id not in output_hcp_ids
+        }
+        if missing_provider_ids:
+            logging.error(f"Missing HcpId's from output: {missing_provider_ids}")
+
+        missing_worksite_ids = {
+            worksite_id for worksite_id in source_worksite_ids if worksite_id not in output_worksite_ids
+        }
+        if missing_worksite_ids:
+            logging.error(f"Missing WorksiteId's from output: {missing_worksite_ids}")
 
         return df

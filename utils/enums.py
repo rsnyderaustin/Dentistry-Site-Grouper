@@ -52,4 +52,6 @@ class AnalysisFunctionAttributes(Enum):
 class OutputDataColumns(Enum):
     ORG_SIZE = 'org_size'
     CLASSIFICATION = 'classification'
+    CLASSIFICATION_COMPLEX = 'classification_complex'
     WORKSITE_ID = 'worksiteid'
+    NUMBER_OF_WORKSITE_SPECIALTIES = 'number_of_worksite_specialties'

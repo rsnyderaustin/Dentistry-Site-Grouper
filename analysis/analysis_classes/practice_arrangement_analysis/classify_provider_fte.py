@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Iterable
 
 from things import ProviderAssignment
@@ -12,8 +13,15 @@ class HoursWeeks:
     converted: bool
 
 
+class IsWeekly(Enum):
+    TRUE = True
+    FALSE = False
+    UNKNOWN = None
+
+
 class WeirdFteTable:
-    table = {
+    # We omit 20: 26 from this table because that is a valid entry
+    wk_hours_to_wk_weeks_table = {
         4: 5,
         5: 7,
         6: 8,
@@ -37,7 +45,7 @@ class WeirdFteTable:
         25: 33,
         26: 34,
         27: 35,
-        28: 26,
+        28: 36,
         29: 38,
         30: 39,
         31: 40,
@@ -52,30 +60,32 @@ class WeirdFteTable:
     }
 
     @classmethod
-    def convert_assignment_hours(cls, assignment: ProviderAssignment):
-        hours = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_HOURS.value]
-        weeks = assignment.assignment_data[ProviderEnums.AssignmentAttributes.WK_WEEKS.value]
+    def assignment_in_table(cls, assignment: ProviderAssignment):
+        hours = getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
+        weeks = getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value)
 
-        if hours in cls.table and weeks == cls.table[hours]:
-            return HoursWeeks(hours=hours, weeks=52, converted=True)
-        else:
-            return HoursWeeks(hours=hours, weeks=weeks, converted=False)
+        if hours in cls.wk_hours_to_wk_weeks_table and weeks == cls.wk_hours_to_wk_weeks_table[hours]:
+            return True
 
 
 class ProviderFteClassifier:
     # There's been a lot of variation in what "weekly" weeks means, as some workers in the past have accounted for
-    # things like vacation weeks. So we just play it safe here and put the weeks as 48
-    full_time_hours = 8 * 48
+    # things like vacation weeks. So we just play it safe here and put the number of weeks denoting "weekly" as 46
+    weekly_wks = 46
+    ft_wk_hours = 32
+    full_time_hours = ft_wk_hours * weekly_wks
 
     @classmethod
-    def provider_is_weekly(cls, assignment: ProviderAssignment):
-        hrs_wks = WeirdFteTable.convert_assignment_hours(assignment)
-        if hrs_wks.hours * hrs_wks.weeks >= cls.full_time_hours:
-            return True
-        # If we don't know either hours or weeks then we can't really know if the provider is at the worksite one
-        # day per week, so our best guess is their FTE
-        elif hrs_wks.hours == 0 or hrs_wks.weeks == 0:
-            is_weekly = True if getattr(assignment, ProviderEnums.AssignmentAttributes.FTE.value) == 'FT' else False
-            return is_weekly
+    def provider_is_weekly(cls, assignment: ProviderAssignment) -> IsWeekly:
+        hours = getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
+        weeks = getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value)
+
+        # If the assignment wkhours and wkweeks falls within the weird, archaic FTE table then the wkweeks are based solely on the
+        # wkhours. So we have no way of knowing the true number of weeks per year the provider worked in this assignment.
+        if WeirdFteTable.assignment_in_table(assignment) or weeks == 0:
+            return IsWeekly.UNKNOWN
+
+        if weeks >= cls.weekly_wks:
+            return IsWeekly.TRUE
         else:
-            return False
+            return IsWeekly.FALSE
