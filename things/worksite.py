@@ -20,6 +20,16 @@ class Worksite:
     def __hash__(self):
         return hash(self.worksite_id)
 
+    def fetch_worksite_size(self, year: int, primary_only: bool = False):
+        year_assignments = self.provider_assignments_tracker.fetch_assignments(year=year)
+
+        if primary_only:
+            year_assignments = [assignment for assignment in year_assignments
+                                if getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value) == ProviderEnums.WorksiteType.PRIMARY.value]
+
+        year_providers = {assignment.provider for assignment in year_assignments}
+        return len(year_providers)
+
     def fetch_provider_assignments(self, year: int = None):
         return self.provider_assignments_tracker.fetch_assignments(year=year)
 

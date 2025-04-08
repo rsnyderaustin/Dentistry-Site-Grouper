@@ -38,12 +38,25 @@ class EnvironmentLoader:
     def _apply_create_providers(self,
                                 row):
         hcp_id = row[ProviderEnums.Attributes.HCP_ID.value]
+        year = row[ProgramColumns.YEAR.value]
 
         provider_data = {col_enum.value: row[col_enum.value] for col_enum in self.required_cols.provider_columns}
-        if hcp_id not in self.env.providers_by_id:
-            provider = Provider(hcp_id=hcp_id,
-                                **provider_data)
+
+        # Handle AGE if it's in the required columns
+        age = None
+        if ProviderEnums.Attributes.AGE in self.required_cols.provider_columns:
+            age = provider_data.pop(ProviderEnums.Attributes.AGE.value)
+            year = row[ProgramColumns.YEAR.value]
+
+        # Create or retrieve the provider
+        provider = self.env.providers_by_id.get(hcp_id)
+        if not provider:
+            provider = Provider(hcp_id=hcp_id, **provider_data)
             self.env.providers_by_id[hcp_id] = provider
+
+        # Set the age if applicable
+        if age is not None:
+            provider.set_age(age=age, year=year)
 
     def _apply_fill_worksite_provider_assignments(self, row):
         year = row[ProgramColumns.YEAR.value]

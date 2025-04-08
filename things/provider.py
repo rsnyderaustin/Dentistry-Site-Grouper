@@ -1,3 +1,4 @@
+from datetime import datetime
 
 from .provider_assignments_tracker import ProviderAssignmentsTracker
 from utils.enums import ProviderEnums
@@ -6,12 +7,25 @@ from utils.enums import ProviderEnums
 class Provider:
 
     def __init__(self, hcp_id: int, **kwargs):
+
+        if ProviderEnums.Attributes.AGE.value in kwargs:
+            raise RuntimeError(f"AGE enum passed into Provider instantiation. This variable changes by year, and so cannot be set in the constructor."
+                               f"Not necessarily a bug, but for best practice this should be avoided for consistencies sake.")
+
         setattr(self, ProviderEnums.Attributes.HCP_ID.value, hcp_id)
+
+        self._age_by_year = dict()
 
         self.assignments_tracker = ProviderAssignmentsTracker()
 
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def fetch_age(self, year: int):
+        return self._age_by_year[year]
+
+    def set_age(self, age: int, year: int):
+        self._age_by_year[year] = age
 
     def add_assignment(self, year: int, assignment):
         self.assignments_tracker.add_assignment(year=year, assignment=assignment)

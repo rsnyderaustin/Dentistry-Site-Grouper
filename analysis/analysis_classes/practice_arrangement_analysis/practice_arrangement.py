@@ -25,28 +25,22 @@ def _determine_worksite_status(year: int, worksite: Worksite):
                         assignment[ProviderEnums.AssignmentAttributes.WK_WEEKS.value])
 
 
-def _determine_organization_size_classification(worksites: Iterable[Worksite], year: int, simplify: bool = False):
-    assignments = {assignment for worksite in worksites for assignment in worksite.fetch_provider_assignments(year=year)}
+def _determine_specialties_class(assignments: Iterable[ProviderAssignment]):
     organization_specialties = {
         getattr(assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
         for assignment in assignments
     }
-    number_of_providers = len(set(assignment.provider for assignment in assignments))
     specialties_class = 'Single Specialty' if len(organization_specialties) == 1 else 'Multi-Specialty'
+    return specialties_class
+
+
+def _determine_organization_size_classification(worksites: Iterable[Worksite], year: int, simplify: bool = False):
+    assignments = {assignment for worksite in worksites for assignment in worksite.fetch_provider_assignments(year=year)}
+
+    specialties_class = _determine_specialties_class(assignments=assignments)
 
     if simplify:
-        if number_of_providers == 1:
-            return 'Solo Practice'
-        elif number_of_providers == 2:
-            return '2 Member Partnership'
-        elif number_of_providers <= 5:
-            return '3 - 5 Member Group'
-        elif number_of_providers <= 8:
-            return '6 - 8 Member Group'
-        elif number_of_providers >= 9:
-            return '9+ Member Group'
-        else:
-            return 'ERROR - NO PROVIDERS?'
+        return 'Main Worksite'
     else:
         practice_arrangements_by_org_size = {
             1: 'Solo Practice',
@@ -69,6 +63,7 @@ class Formatter:
             ProgramColumns.YEAR.value: [],
             OutputDataColumns.ORG_SIZE.value: [],
             OutputDataColumns.WORKSITE_SIZE.value: [],
+            OutputDataColumns.WORKSITE_SIZE_PRIMARY_ONLY.value: [],
             ProviderEnums.Attributes.HCP_ID.value: [],
             ProviderEnums.Attributes.AGE.value: [],
             OutputDataColumns.WORKSITE_ID.value: [],
@@ -77,15 +72,18 @@ class Formatter:
             ProviderEnums.AssignmentAttributes.ACTIVITY.value: [],
             WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value: [],
             ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value: [],
-            OutputDataColumns.NUMBER_OF_WORKSITE_SPECIALTIES.value: []
+            OutputDataColumns.NUMBER_OF_WORKSITE_SPECIALTIES.value: [],
+            OutputDataColumns.SPECIALTIES_CLASS.value: []
         }
 
-    def output_data(self, assignment: ProviderAssignment, year: int, org_size: int, ultimate_parent_id: int,
-                    practice_arrangement, practice_arrangement_complex, worksite_type: str, number_of_specialties: int):
+    def output_data(self, assignment: ProviderAssignment, year: int, org_size: int, worksite_size: int, worksite_size_primary: int, ultimate_parent_id: int,
+                    practice_arrangement, practice_arrangement_complex, worksite_type: str, number_of_specialties: int, specialties_class: str):
         self.output[ProgramColumns.YEAR.value].append(year)
         self.output[OutputDataColumns.ORG_SIZE.value].append(org_size)
+        self.output[OutputDataColumns.WORKSITE_SIZE.value].append(worksite_size)
+        self.output[OutputDataColumns.WORKSITE_SIZE_PRIMARY_ONLY.value].append(worksite_size_primary)
         self.output[ProviderEnums.Attributes.HCP_ID.value].append(getattr(assignment.provider, ProviderEnums.Attributes.HCP_ID.value))
-        self.output[ProviderEnums.Attributes.AGE.value].append(getattr(assignment.provider, ProviderEnums.Attributes.AGE.value))
+        self.output[ProviderEnums.Attributes.AGE.value].append(assignment.provider.fetch_age(year=year))
         self.output[OutputDataColumns.WORKSITE_ID.value].append(getattr(assignment.worksite, WorksiteEnums.Attributes.WORKSITE_ID.value))
         self.output[OutputDataColumns.CLASSIFICATION.value].append(practice_arrangement),
         self.output[OutputDataColumns.CLASSIFICATION_COMPLEX.value].append(practice_arrangement_complex),
@@ -93,6 +91,7 @@ class Formatter:
         self.output[WorksiteEnums.Attributes.ULTIMATE_PARENT_ID.value].append(ultimate_parent_id),
         self.output[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value].append(worksite_type),
         self.output[OutputDataColumns.NUMBER_OF_WORKSITE_SPECIALTIES.value].append(number_of_specialties)
+        self.output[OutputDataColumns.SPECIALTIES_CLASS.value].append(specialties_class)
 
 
 class PracticeArrangement(AnalysisClass):
@@ -130,6 +129,10 @@ class PracticeArrangement(AnalysisClass):
         if not satellites:
             satellites = list()
 
+        worksites = [primary_worksite, *satellites]
+        assignments = {assignment for worksite in worksites for assignment in worksite.fetch_provider_assignments(year=year)}
+        specialties_class = _determine_specialties_class(assignments=assignments)
+
         primary_practice_arrangement = _determine_organization_size_classification(
             worksites=[primary_worksite, *satellites],
             year=year,
@@ -150,11 +153,14 @@ class PracticeArrangement(AnalysisClass):
                 assignment=assignment,
                 year=year,
                 org_size=len(providers),
+                worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                 ultimate_parent_id=ultimate_parent_id,
                 practice_arrangement=primary_practice_arrangement,
                 practice_arrangement_complex=primary_practice_arrangement_complex,
                 worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                specialties_class=specialties_class
             )
 
         for assignment in satellite_assignments:
@@ -162,11 +168,14 @@ class PracticeArrangement(AnalysisClass):
                 assignment=assignment,
                 year=year,
                 org_size=len(providers),
+                worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                 ultimate_parent_id=ultimate_parent_id,
                 practice_arrangement=WorksiteEnums.PracticeArrangements.SATELLITE.value,
                 practice_arrangement_complex=WorksiteEnums.PracticeArrangements.SATELLITE.value,
                 worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                specialties_class=specialties_class
             )
 
     @classmethod
@@ -210,6 +219,7 @@ class PracticeArrangement(AnalysisClass):
         is_corporate = any([getattr(assignment.worksite,
                                     WorksiteEnums.Attributes.PRAC_ARR_NAME.value) == WorksiteEnums.PracticeArrangements.CORPORATE.value
                             for assignment in year_assignments])
+        specialties_class = _determine_specialties_class(year_assignments)
 
         if is_corporate:
             for assignment in year_assignments:
@@ -217,11 +227,14 @@ class PracticeArrangement(AnalysisClass):
                     assignment=assignment,
                     year=year,
                     org_size=len(year_providers),
+                    worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                    worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                     practice_arrangement=WorksiteEnums.PracticeArrangements.CORPORATE.value,
                     practice_arrangement_complex=WorksiteEnums.PracticeArrangements.CORPORATE.value,
                     worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                    specialties_class=specialties_class
                 )
             return
 
@@ -244,11 +257,14 @@ class PracticeArrangement(AnalysisClass):
                     assignment=assignment,
                     year=year,
                     org_size=len(year_providers),
+                    worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                    worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                     practice_arrangement=WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value,
                     practice_arrangement_complex=WorksiteEnums.PracticeArrangements.HOSPITAL_SPONSORED_PRACTICE.value,
                     worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                    specialties_class=specialties_class
                 )
             return
 
@@ -284,11 +300,14 @@ class PracticeArrangement(AnalysisClass):
                     assignment=assignment,
                     year=year,
                     org_size=len(year_providers),
+                    worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                    worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                     practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value,
                     practice_arrangement_complex=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value,
                     worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                    specialties_class=specialties_class
                 )
             return
         elif len(worksites_statuses[IsWeekly.TRUE]) == 1 and len(worksites_statuses[IsWeekly.UNKNOWN]) == 0:
@@ -312,10 +331,13 @@ class PracticeArrangement(AnalysisClass):
                     assignment=assignment,
                     year=year,
                     org_size=len(year_providers),
+                    worksite_size=assignment.worksite.fetch_worksite_size(year=year),
+                    worksite_size_primary=assignment.worksite.fetch_worksite_size(year=year, primary_only=True),
                     ultimate_parent_id=organization.ultimate_parent_worksite.worksite_id,
                     practice_arrangement=WorksiteEnums.PracticeArrangements.MULTISITE_DENTAL_GROUP.value,
                     worksite_type=getattr(assignment, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value),
-                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year)
+                    number_of_specialties=assignment.worksite.fetch_number_of_provider_specialties(year=year),
+                    specialties_class=specialties_class
                 )
             return
 

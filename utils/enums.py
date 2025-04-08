@@ -40,6 +40,9 @@ class ProviderEnums:
         FULL_TIME = 'FT'
         PART_TIME = 'PT'
 
+    class WorksiteType(Enum):
+        PRIMARY = 'P'
+        SECONDARY = 'S'
 
 class ProgramColumns(Enum):
     YEAR = 'year'
@@ -55,3 +58,6 @@ class OutputDataColumns(Enum):
     CLASSIFICATION_COMPLEX = 'classification_complex'
     WORKSITE_ID = 'worksiteid'
     NUMBER_OF_WORKSITE_SPECIALTIES = 'number_of_worksite_specialties'
+    WORKSITE_SIZE = 'worksite_size'
+    WORKSITE_SIZE_PRIMARY_ONLY = 'worksite_size_primary_only'
+    SPECIALTIES_CLASS = 'specialties_class'
