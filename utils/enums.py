@@ -44,6 +44,7 @@ class ProviderEnums:
         PRIMARY = 'P'
         SECONDARY = 'S'
 
+
 class ProgramColumns(Enum):
     YEAR = 'year'
 
