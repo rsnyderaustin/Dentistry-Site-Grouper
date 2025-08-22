@@ -29,6 +29,16 @@ class ProgramManager:
         self.year_end_df = year_end_df
         self.year_end_df.columns = [col.lower().replace(' ', '') for col in self.year_end_df.columns]
 
+    def _validate_output_data(self, df: pd.DataFrame):
+        source_worksite_ids = set(self.year_end_df[WorksiteEnums.Attributes.WORKSITE_ID.value])
+        output_worksite_ids = set(df[WorksiteEnums.Attributes.WORKSITE_ID.value])
+
+        missing_worksite_ids = {
+            worksite_id for worksite_id in source_worksite_ids if worksite_id not in output_worksite_ids
+        }
+        if missing_worksite_ids:
+            logging.error(f"Missing WorksiteId's from output: {missing_worksite_ids}")
+
     def analyze(self, analysis_class: AnalysisClass):
         env_loader = EnvironmentLoader(worksites_df=self.worksites_df,
                                        year_end_df=self.year_end_df,
@@ -40,22 +50,6 @@ class ProgramManager:
         df = analysis_class.analyze_environment(env=env,
                                                 years=years)
 
-        source_hcp_ids = set(self.year_end_df[ProviderEnums.Attributes.HCP_ID.value])
-        output_hcp_ids = set(df[ProviderEnums.Attributes.HCP_ID.value])
-
-        source_worksite_ids = set(self.year_end_df[WorksiteEnums.Attributes.WORKSITE_ID.value])
-        output_worksite_ids = set(df[WorksiteEnums.Attributes.WORKSITE_ID.value])
-
-        missing_provider_ids = {
-            hcp_id for hcp_id in source_hcp_ids if hcp_id not in output_hcp_ids
-        }
-        if missing_provider_ids:
-            logging.error(f"Missing HcpId's from output: {missing_provider_ids}")
-
-        missing_worksite_ids = {
-            worksite_id for worksite_id in source_worksite_ids if worksite_id not in output_worksite_ids
-        }
-        if missing_worksite_ids:
-            logging.error(f"Missing WorksiteId's from output: {missing_worksite_ids}")
+        self._validate_output_data(df)
 
         return df

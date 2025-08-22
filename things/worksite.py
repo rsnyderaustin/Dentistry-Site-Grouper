@@ -1,4 +1,3 @@
-
 from .provider_assignment import ProviderAssignment
 from .provider_assignments_tracker import ProviderAssignmentsTracker
 from utils.enums import ProviderEnums
@@ -37,8 +36,20 @@ class Worksite:
         self.provider_assignments_tracker.add_assignment(year=year,
                                                          assignment=provider_assignment)
 
-    def fetch_number_of_provider_specialties(self, year: int):
+    def fetch_provider_specialties(self, year: int):
         assignments = self.fetch_provider_assignments(year=year)
-        specialties = {getattr(assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
-                       for assignment in assignments}
-        return len(specialties)
+        return {getattr(assignment, ProviderEnums.AssignmentAttributes.SPECIALTY_NAME.value)
+                for assignment in assignments}
+
+    def is_staffed_full_time(self, year: int) -> bool:
+        assignments = self.fetch_provider_assignments(year=year)
+        hours = sum([
+            getattr(assignment, ProviderEnums.AssignmentAttributes.WK_HOURS.value)
+            for assignment in assignments
+        ])
+        weeks = sum([
+            getattr(assignment, ProviderEnums.AssignmentAttributes.WK_WEEKS.value)
+            for assignment in assignments
+        ])
+
+        return hours * weeks >= 32 * 48

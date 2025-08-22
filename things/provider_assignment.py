@@ -3,7 +3,7 @@ from utils import WorksiteEnums, ProviderEnums
 
 class ProviderAssignment:
 
-    def __init__(self, worksite, provider, assignment_data: dict, worksite_type: str, activity: str, fte: str):
+    def __init__(self, worksite, provider, assignment_data: dict, worksite_type: str, activity: str):
         self.worksite = worksite
         self.provider = provider
 
@@ -12,4 +12,3 @@ class ProviderAssignment:
 
         setattr(self, ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value, worksite_type)
         setattr(self, ProviderEnums.AssignmentAttributes.ACTIVITY.value, activity)
-        setattr(self, ProviderEnums.AssignmentAttributes.FTE.value, fte)

@@ -1,3 +1,4 @@
+
 from .worksite import Worksite
 
 
@@ -12,7 +13,7 @@ class Organization:
 
     @property
     def worksites(self):
-        return list(self.worksites_by_id.values())
+        return set(self.worksites_by_id.values())
 
     @property
     def ultimate_parent_worksite_id(self):
@@ -26,7 +27,11 @@ class Organization:
     def add_worksite(self, worksite: Worksite):
         self.worksites_by_id[worksite.worksite_id] = worksite
 
-    def fetch_provider_assignments(self, year: int = None) -> list:
+    def fetch_worksites(self, year: int) -> set[Worksite]:
+        assignments = self.fetch_provider_assignments(year=year)
+        return {assignment.worksite for assignment in assignments}
+
+    def fetch_provider_assignments(self, year: int = None) -> list['ProviderAssignment']:
         return [assignment for worksite in self.worksites for assignment in worksite.fetch_provider_assignments(year=year)]
 
 

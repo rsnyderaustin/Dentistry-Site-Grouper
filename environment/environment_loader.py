@@ -64,7 +64,6 @@ class EnvironmentLoader:
         worksite_id = row[WorksiteEnums.Attributes.WORKSITE_ID.value]
         worksite_type = row[ProviderEnums.AssignmentAttributes.WORKSITE_TYPE.value]
         activity = row[ProviderEnums.AssignmentAttributes.ACTIVITY.value]
-        fte = row[ProviderEnums.AssignmentAttributes.FTE.value]
 
         provider = self.env.providers_by_id[hcp_id]
         worksite = self.env.worksites_by_id[worksite_id]
@@ -76,8 +75,7 @@ class EnvironmentLoader:
             provider=provider,
             assignment_data=assignment_data,
             worksite_type=worksite_type,
-            activity=activity,
-            fte=fte
+            activity=activity
         )
 
         provider.add_assignment(
@@ -177,7 +175,10 @@ class EnvironmentLoader:
         )
 
         # Filter organizations to only those with at least one provider in history
-        organization_ids_to_filter = [org.ultimate_parent_worksite.worksite_id for org in self.env.organizations_by_id.values() if not org.fetch_provider_assignments()]
+        organization_ids_to_filter = [
+            org.ultimate_parent_worksite.worksite_id
+            for org in self.env.organizations_by_id.values() if not org.fetch_provider_assignments()
+        ]
         for org_id in organization_ids_to_filter:
             del self.env.organizations_by_id[org_id]
 
