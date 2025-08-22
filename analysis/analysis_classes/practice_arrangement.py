@@ -71,14 +71,16 @@ class Formatter:
             self.row_data[ProgramColumns.YEAR.value] = []
             self.row_data[OutputDataColumns.ORG_SIZE.value] = []
             self.row_data[WorksiteEnums.Attributes.WORKSITE_ID.value] = []
+            self.row_data[WorksiteEnums.Attributes.WORKSITE_NAME.value] = []
             self.row_data[WorksiteEnums.Attributes.PRAC_ARR_NAME.value] = []
             self.row_data[OrganizationEnums.Attributes.STRUCTURE.value] = []
 
         self.row_data[ProgramColumns.YEAR.value].append(year)
         self.row_data[OutputDataColumns.ORG_SIZE.value].append(organization.determine_number_of_dentists(year=year))
         self.row_data[WorksiteEnums.Attributes.WORKSITE_ID.value].append(worksite.worksite_id)
-        self.row_data[WorksiteEnums.Attributes.PRAC_ARR_NAME.value].append(practice_arrangement)
-        self.row_data[OrganizationEnums.Attributes.STRUCTURE.value].append(organization_structure)
+        self.row_data[WorksiteEnums.Attributes.WORKSITE_NAME.value].append(getattr(worksite, WorksiteEnums.Attributes.WORKSITE_NAME.value))
+        self.row_data[WorksiteEnums.Attributes.PRAC_ARR_NAME.value].append(practice_arrangement.value)
+        self.row_data[OrganizationEnums.Attributes.STRUCTURE.value].append(organization_structure.value)
 
         self.rows_inputted += 1
 
@@ -171,7 +173,10 @@ class PracticeArrangement(AnalysisClass):
 
     @staticmethod
     def _determine_if_corporate(organization: Organization, year: int) -> bool:
-        practice_arrangements = organization.fetch_provider_assignments(year=year)
+        practice_arrangements = organization.fetch_worksite_attributes(
+            year=year,
+            attribute=WorksiteEnums.Attributes.PRAC_ARR_NAME.value
+        )
 
         return any([prac_arr == 'Corporate' for prac_arr in practice_arrangements])
 
@@ -231,6 +236,8 @@ class PracticeArrangement(AnalysisClass):
     def classify(self, organization: Organization, year: int):
 
         worksites = organization.fetch_worksites(year=year)
+        if not worksites:
+            return
 
         # Determine DSO before corporate because DSO is sort-of a more specific version of a corporate relationship and there is overlap
         if self._determine_if_dso(organization):

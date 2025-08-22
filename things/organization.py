@@ -31,6 +31,10 @@ class Organization:
         assignments = self.fetch_provider_assignments(year=year)
         return {assignment.worksite for assignment in assignments}
 
+    def fetch_worksite_attributes(self, year: int, attribute):
+        worksites = self.fetch_worksites(year=year)
+        return [getattr(ws, attribute) for ws in worksites]
+
     def fetch_provider_assignments(self, year: int = None) -> list['ProviderAssignment']:
         return [assignment for worksite in self.worksites for assignment in worksite.fetch_provider_assignments(year=year)]
 
